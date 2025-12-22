@@ -1,0 +1,25 @@
+# Manifest files 
+/Manifest.toml
+/docs/Manifest.toml
+
+# Build directories
+/docs/build/
+
+# IDE/editor files
+.qodo
+.vscode/
+*.swp
+*~
+
+# Compiled Julia files
+*.ji
+
+# Temporary files
+*.tmp
+.DS_Store
+
+# MacOS system files
+.DS_Store
+
+# Backup files
+*.bak

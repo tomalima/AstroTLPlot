@@ -1,0 +1,168 @@
+Debug:
+  ldebug: true
+Directories:
+  directory: 'data/input/dados-disk-2000x2000x1/'
+  diratomic: './data/input/Atomic'
+SimulationType:
+  lhdrun: true
+  lmhdrun: false
+FileFormat:
+  lhdf: true
+  lascii: false
+  lvtk: false
+GridSize:
+  in: 2000
+  jn: 2000
+  kn: 1
+RealDims:
+  xmin: 0.0
+  xmax: 1000.0
+  ymin: 0.0
+  ymax: 1000.0
+  zmin: 0.0
+  zmax: 0.0
+  units: 'pc'
+MapsDims:
+  x1: 0.0
+  x2: 1000.0
+  y1: 0.0
+  y2: 1000.0
+  z1: 0.0
+  z2: 0.0
+Loopgraf:
+  lmin: 1
+  lmax: 1
+  stepl: 1
+OutputPlot:
+  pdf: true
+  cont: false
+  grey: false
+  color: true
+  nconts: 5
+NumberOfPlots:
+  nfiles: 5001
+  nfile_start: 3000
+  nfile_end: 5000
+  jump: 10
+  nl: 1
+  numx: 1
+  numy: 1
+Device:
+  device: '/cps'
+  dev: 'cps'
+PlotSetting:  
+  paleta: 2
+  orientacao: 'RI'
+Labels:
+  xlabel: 'X (pc)'
+  ylabel: 'Y (pc)'
+  writetime: true
+  localizar: false
+Scales:
+  timescale: 3.154e13
+  bscale: 1.0
+  denscale: 1.67e-24
+  temscale: 1.0
+  velscale: 1.0e5
+  elescale: 5.0
+  logs: true
+VariableParams:
+  ldens: true
+  ltemp: true
+  lpres: true
+  lpram: true
+  lmagn: false
+  lentr: false
+  lmach: true
+  lions: true
+  lele: true
+  lratios: false
+  lele_kern: false
+Views:
+  top: true
+  front: false
+  side: false
+  vertvar: false
+setminmaxvar:
+  dmin: -4.0
+  dmax: 1.5
+  tmin: 1.0
+  tmax: 7.0
+  pmin: -15.0
+  pmax: -10.0
+  pokmin: 0.0
+  pokmax: 5.0
+  bmin: -2.0
+  bmax: 1.0
+  pmagmin: -5.0
+  pmagmax: 0.0
+  betamin: -1.0
+  betamax: 5.0
+  valfmin: -8.0
+  valfmax: -4.0
+  machmin: -2.0
+  machmax: 2.0
+  rotmin: -0.1
+  rotmax: 1.0
+  vzmin: -5.0e6
+  vzmax: 1.2e7
+setminmaxions:
+  elemin: -4.0
+  elemax: 0.0
+  ovimin: -10.0
+  ovimax: -4.0
+mincontours:
+  dmincont: 1.0
+  dmaxcont: 2.0
+  tmincont: 1.0
+  tmaxcont: 3.0
+Tracer:
+  nmintrace: 1
+  ntraces: 3
+Title:
+  title: 'HD Run $\Delta x=0.5$ pc; $\sigma/\sigma_{\text{Gal}}=1$; $E_{51}=1$'
+  resolution: '$\Delta x=0.5$ pc'
+  supernova: '$\sigma/\sigma_{\text{Gal}}=1$; $E_{51}=1$'
+  author: '\copyright{} TUE 2025'
+  unittime: '\text{Myr}'
+Aspects:
+  width: 6.0
+  aspect: 0.935
+Abundances:
+  lallen: false
+  lag89: false
+  lasplund: false
+  lgas07: false
+  lagss09: true
+  zmetal: 0.0
+  deplt: 0.0
+IonsType:
+  lhyd: true
+  lhel: true
+  lcar: true
+  lnit: true
+  loxy: true
+  lne: true
+  lmg: true
+  lsil: true
+  lsul: true
+  lar: true
+  lfe: true
+IonsPlot:
+  plhyd: true
+  plhel: true
+  plcar: true
+  plnit: true
+  ploxy: false
+  plne:  false
+  plmg:  false
+  plsil: false
+  plsul: false
+  plar:  false
+  plfe:  false
+AtomicIonicFraction:
+  id: 0
+  ncool: 161
+Interpolation:
+  lspline: false
+  lrloss: true

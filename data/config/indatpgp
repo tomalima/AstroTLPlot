@@ -1,0 +1,164 @@
+$debug 
+	ldebug=.f./
+$dbase 
+	directory='./',
+	diratomic='../Atomic/' /
+$typesim 
+	lhdrun=.true.,
+	lmhdrun=.false. /
+$fileformat 
+	lhdf=.true.,
+	lascii=.false.,
+	lvtk=.false.   /
+$gridsize 
+	in=2000,
+	jn=2000,
+	kn=1 /
+$realdims 
+	xmin=0.,
+	xmax=1000,
+	ymin=0.,
+	ymax=1000.,
+	zmin=0.,
+	zmax=0./
+$mapsdims 
+	x1=0.,
+	x2=1000,
+	y1=0.,
+	y2=1000.,
+	z1=0.,
+	z2=0./
+$loopgraf 
+	lmin=1,
+	lmax=1, 
+	stepl=1 /
+$tipos 
+        pdf=.true.,
+        cont=.false.,
+        grey=.false.,
+        color=.true.,
+        nconts=5 /
+$nplots 
+	nfiles=5001,
+	nfile_start=3001,
+	nfile_end  =5001,
+	jump=500,
+	nl=1,
+	numx=1,
+	numy=1 /
+$devic 
+        device='/cps',
+        dev='cps',
+        paleta=2,
+        orientacao='RI'/
+$labels
+	xlabel='X (pc)',
+	ylabel='Y (pc)',
+	writetime=.true.,
+	localizar=.false./
+$scales
+	timescale=3.154e13,
+	bscale  =1.0,
+	denscale=1.67e-24,
+	temscale=1.0,
+	velscale=1.0e5,
+	elescale=5.0,
+	logs=.true./
+$variav
+        ldens=.t.,
+        ltemp=.t.,
+        lpres=.t.,
+	lpram=.t.,
+	lmagn=.f.,
+	lentr=.f.,
+	lmach=.t.,
+	lions=.t.,
+	lele =.t.,
+	lratios=.false./
+$vistas
+	top    =.true.,
+	front  =.false.,
+	side   =.false.,
+        vertvar=.false./
+$setminmaxvar
+	dmin=-4.,
+	dmax=1.5,
+	tmin=1.,
+	tmax=7.,
+	pmin=-15.,
+	pmax=-10.,
+	pokmin=0.,
+	pokmax=5.,
+	bmin=-2.,
+	bmax=1.,
+	pmagmin=-5.,
+	pmagmax=0.,
+	betamin=-1.,
+	betamax=5.,
+	valfmin=-8.,
+	valfmax=-4.,
+	machmin=-2.,
+	machmax=2.,
+	rotmin=-0.1,
+	rotmax=1.,
+	vzmin=-5.0e6,
+	vzmax=1.2e7 /
+$setminmaxions
+	elemin=-4.0,
+	elemax= 0.0,
+	ovimin=-10.0,
+	ovimax=-4.0 /
+$mincontours
+	dmincont=1.0,
+	dmaxcont=2.0,
+	tmincont=1.0,
+	tmaxcont=3.0/
+&tracer
+	nmintrace=1,
+	ntraces=3 /
+$titulo
+	title='HD Run \gDx=0.5 pc; \gs/\gs\dGal\u=1; E\d51\u=1',
+	resolution='\gDx=0.5 pc',
+        author='\(0274)M.Avillez',
+	unittime='Myr'/
+$aspectos
+        width=6.,
+        aspect=0.935 /
+$abundances 
+	lallen  =.f.,
+	lag89   =.f.,
+	lasplund=.f.,
+	lgas07  =.f.,
+	lagss09 =.T.,
+	zmetal  =0.0,
+	deplt   =0.0/
+$ionstype 
+	lhyd=.t.,
+	lhel=.t.,
+	lcar=.f.,
+	lnit=.t.,
+	loxy=.t.,
+	lne =.t.,
+	lmg =.t.,
+	lsil=.t.,
+	lsul=.t.,
+	lar =.f.,
+	lfe =.t./
+$ionsplot
+        plhyd=.t.,
+        plhel=.t.,
+        plcar=.t.,
+        plnit=.t.,
+        ploxy=.t.,
+        plne =.t.,
+        plmg =.t.,
+        plsil=.t.,
+        plsul=.t.,
+        plar =.f.,
+        plfe =.t./
+$neidata
+	id=1,
+	ncool=161 /
+$interpolation
+	lspline=.f.,
+	lrloss=.t./
