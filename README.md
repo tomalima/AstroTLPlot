@@ -41,7 +41,7 @@ The package is designed to serve the same use cases as the original AstroPGPLOT 
 
 ## Historical Context & Collaboration
 
-This package builds upon the concepts and workflows originally developed for **AstroPGPLOT**, which was created by **Dr. Miguel Avillez in Fortran 2008 (Avillez et al., 2009, 2020)**. AstroPGPLOT provided a structured framework for visualization and analysis in astrophysical research.
+This package builds upon the concepts and workflows originally developed for **AstroPGPLOT**, which was created by **Dr. Miguel Avillez in FORTRAN 2008 (Avillez et al., 2005, 2020)**. AstroPGPLOT provided a structured framework for visualization and analysis in astrophysical research.
 
 The development of AstroTLPlot has been carried out in collaboration with **Prof. Francisco Coelho** and **Dr. Miguel Avillez**, whose invaluable insights into the original AstroPGPLOT system and its scientific applications significantly informed this work.
 
@@ -71,14 +71,14 @@ For detailed usage, examples, and API reference, see the [documentation](https:/
 
 If you use AstroTLPlot in your research, please consider citing:
 
-- **Avillez et al. (2009, 2020)** for the original AstroPGPLOT framework
+- **Avillez et al. (2005, 2020)** for the original AstroPGPLOT framework
 - This package (citation details forthcoming)
 
 ---
 
 ## Acknowledgements
 
-Special thanks to **Prof. Francisco Coelho** and **Miguel Avillez** for their collaboration, expertise, and support in bridging the legacy AstroPGPLOT system with modern Julia workflows.
+Special thanks to **Prof. Dr. Francisco Coelho** and **Prof. Dr. Miguel Avillez** for their collaboration, expertise, and support in bridging the legacy AstroPGPLOT system with modern Julia workflows.
 
 ---
 
