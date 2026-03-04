@@ -41,9 +41,11 @@ The package is designed to serve the same use cases as the original AstroPGPLOT 
 
 ## Historical Context & Collaboration
 
-This package builds upon concepts and workflows originally developed in the **AstroPGPLOT** libraries created by **Miguel A. Vilela** for IDL/PGPLOT and later adapted to Fortran/PGPLOT environments by **Avillez et al. (2009, 2020)**. The development of AstroTLPlot has been carried out in collaboration with **Prof. Francisco Coelho** and **Miguel Avillez**, who provided invaluable insights into the original AstroPGPLOT system and its applications in astrophysical research.
+This package builds upon the concepts and workflows originally developed for **AstroPGPLOT**, which was created by **Dr. Miguel Avillez in Fortran 2008 (Avillez et al., 2009, 2020)**. AstroPGPLOT provided a structured framework for visualization and analysis in astrophysical research.
 
-AstroTLPlot reimplements these core visualization and analysis capabilities in Julia, replacing PGPLOT with Makie.jl while maintaining similar logical interfaces for users familiar with the original tools.
+The development of AstroTLPlot has been carried out in collaboration with **Prof. Francisco Coelho** and **Dr. Miguel Avillez**, whose invaluable insights into the original AstroPGPLOT system and its scientific applications significantly informed this work.
+
+The primary objective of AstroTLPlot is to modernize AstroPGPLOT by reimplementing its core visualization and analysis capabilities in Julia. In doing so, it replaces PGPLOT with Makie.jl while preserving a similar logical structure and interface, thereby ensuring continuity for users familiar with the original system while leveraging modern language features and advanced visualization tools.
 
 ---
 
