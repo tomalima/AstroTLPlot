@@ -357,6 +357,213 @@ function readdata_hdf5!(simulations_data::SimulationData, config_data::ConfigDat
     return nothing
 end
 
+
+#-------------------------------------
+
+#******************************************************************
+# Function: readdata_hdf5!
+# Purpose: Reads simulation datasets from an HDF5 file.
+#******************************************************************
+"""
+Read simulation data from an HDF5 file and populate the SimulationData structure.
+
+This function reads grid dimensions, velocity fields, density, energy, and optionally
+magnetic field data from an HDF5 file, converting units as necessary and handling
+both MHD and hydrodynamic simulations.
+
+Parameters
+----------
+datafile : AbstractString
+    Full path to the HDF5 file to be read
+simulations_data : SimulationData
+    The data structure to be populated with simulation data
+config_data : ConfigData
+    Configuration data containing grid sizes, file paths, and simulation type
+runtime_data : RuntimeData
+    Runtime parameters (currently not used in this function)
+
+Side Effects
+------------
+Modifies the simulations_data structure in-place with the read data
+Prints status messages or errors to the console
+
+Notes
+-----
+- Velocity data is converted from km/s to cm/s (multiplied by 1e5)
+- The function handles both MHD (with magnetic fields) and hydrodynamic simulations
+- Grid dimensions are read from fakeDim0, fakeDim1, fakeDim2 datasets
+"""
+function readdata_hdf5!(datafile::AbstractString,
+                        simulations_data::SimulationData,
+                        config_data::ConfigData,
+                        runtime_data::RuntimeData)
+
+    # Extract grid dimensions from configuration
+    in_grid = trunc(Int, config_data.grid_size.grid_point.x)
+    jn_grid = trunc(Int, config_data.grid_size.grid_point.y)
+    kn_grid = trunc(Int, config_data.grid_size.grid_point.z)
+
+    # Read simulation type (MHD or hydro)
+    lmhdrun = config_data.simulation_type.lmhdrun  # Flag for MHD simulation
+
+    # Open HDF5 file in read mode using the universal opener
+    h5file = open_file(datafile)
+
+    # Check for error code return
+    if isa(h5file, Int)
+        # If an error code is returned (e.g., 2, 3, 6), return it to the caller.
+        return h5file
+    end
+
+    # If successful, 'h5file' is the file handle. Proceed with reading.
+
+    # Read grid scales
+    try
+        simulations_data.Z_grid = read(h5file["fakeDim0"])
+        simulations_data.X_grid = read(h5file["fakeDim1"])
+        simulations_data.Y_grid = read(h5file["fakeDim2"])
+    catch e
+        close(h5file)
+        return ERROR_HDF5_READ_FAIL
+    end
+
+    # Read main simulation datasets with error handling
+    try
+        # Read and convert velocity components (km/s to cm/s)
+        simulations_data.vxx = read(h5file["Data-Set-2"]) * 1e5
+        simulations_data.vyy = read(h5file["Data-Set-3"]) * 1e5
+        simulations_data.vzz = read(h5file["Data-Set-4"]) * 1e5
+
+        # Read density and energy
+        simulations_data.den  = read(h5file["Data-Set-5"])
+        simulations_data.ene  = read(h5file["Data-Set-6"])
+
+        # Read magnetic field components if this is an MHD simulation
+        if lmhdrun
+            simulations_data.bxx = read(h5file["Data-Set-7"])
+            simulations_data.byy = read(h5file["Data-Set-8"])
+            simulations_data.bzz = read(h5file["Data-Set-9"])
+        end
+
+        println("Datasets read successfully - HDF5.")
+    catch e
+        close(h5file)
+        return ERROR_HDF5_READ_FAIL
+    end
+
+    # Close the HDF5 file
+    close(h5file)
+
+    # Return nothing on complete success (typical for functions ending with '!')
+    return nothing
+end
+
+
+#******************************************************************
+# Function: readdata_hdf5
+# Purpose: Reads simulation datasets from an HDF5 file and returns SimulationData.
+#******************************************************************
+"""
+Read simulation data from an HDF5 file and populate the SimulationData structure.
+
+This function reads grid dimensions, velocity fields, density, energy, and optionally
+magnetic field data from an HDF5 file, converting units as necessary and handling
+both MHD and hydrodynamic simulations.
+
+Parameters
+----------
+datafile : AbstractString
+    Full path to the HDF5 file to be read
+config_data : ConfigData
+    Configuration data containing grid sizes, file paths, and simulation type
+runtime_data : RuntimeData
+    Runtime parameters (currently not used in this function)
+
+Side Effects
+------------
+Prints status messages or errors to the console
+
+Notes
+-----
+- Velocity data is converted from km/s to cm/s (multiplied by 1e5)
+- The function handles both MHD (with magnetic fields) and hydrodynamic simulations
+- Grid dimensions are read from fakeDim0, fakeDim1, fakeDim2 datasets
+
+Return
+------
+SimulationData
+    Returns the (possibly partially populated) SimulationData structure.
+"""
+function readdata_hdf5(datafile::AbstractString,
+                       config_data::ConfigData,
+                       runtime_data::RuntimeData)::SimulationData
+
+    # Extract grid dimensions from configuration
+    in_grid = trunc(Int, config_data.grid_size.grid_point.x)
+    jn_grid = trunc(Int, config_data.grid_size.grid_point.y)
+    kn_grid = trunc(Int, config_data.grid_size.grid_point.z)
+
+    # Read simulation type (MHD or hydro)
+    lmhdrun = config_data.simulation_type.lmhdrun  # Flag for MHD simulation
+
+    # Create an instance to populate
+    simulations_data = SimulationData()
+
+    # Open HDF5 file in read mode using the universal opener
+    h5file = open_file(datafile)
+
+    # Check for error code return
+    if isa(h5file, Int)
+        # If an error code is returned (e.g., 2, 3, 6), return the current structure.
+        return simulations_data
+    end
+
+    # If successful, 'h5file' is the file handle. Proceed with reading.
+
+    # Read grid scales
+    try
+        simulations_data.Z_grid = read(h5file["fakeDim0"])
+        simulations_data.X_grid = read(h5file["fakeDim1"])
+        simulations_data.Y_grid = read(h5file["fakeDim2"])
+    catch e
+        # println("Error reading grid scales from HDF5 file: ", e)
+        close(h5file)
+        return simulations_data
+    end
+
+    # Read main simulation datasets with error handling
+    try
+        # Read and convert velocity components (km/s to cm/s)
+        simulations_data.vxx = read(h5file["Data-Set-2"]) * 1e5
+        simulations_data.vyy = read(h5file["Data-Set-3"]) * 1e5
+        simulations_data.vzz = read(h5file["Data-Set-4"]) * 1e5
+
+        # Read density and energy
+        simulations_data.den = read(h5file["Data-Set-5"])
+        simulations_data.ene = read(h5file["Data-Set-6"])
+
+        # Read magnetic field components if this is an MHD simulation
+        if lmhdrun
+            simulations_data.bxx = read(h5file["Data-Set-7"])
+            simulations_data.byy = read(h5file["Data-Set-8"])
+            simulations_data.bzz = read(h5file["Data-Set-9"])
+        end
+
+        println("Datasets read successfully - HDF5.")
+    catch e
+        # println("Error reading datasets: ", e)
+        # If reading the datasets fails, close and return the structure as-is
+        close(h5file)
+        return simulations_data
+    end
+
+    # Close the HDF5 file
+    close(h5file)
+
+    # Return the populated structure on complete success
+    return simulations_data
+end
+
 #******************************************************************
 # Function: readdata_hdf4!
 # Purpose: Read simulation data from HDF4 files and populate data structures
@@ -853,7 +1060,6 @@ function readlist(filename::String, config_data::ConfigData, runtime_data::Runti
     return runtime_data # return the modified runtime_data
 end
 
-
 #******************************************************************
 # Function: readlist!
 # Purpose: Read and parse simulation file list with timing data
@@ -919,11 +1125,11 @@ function readlist!(filename::String,config_data::ConfigData, runtime_data::Runti
 end
 
 #******************************************************************
-# Function: variables_v2!
+# Function: variables!
 # Purpose: Calculate derived physical variables for simulation data based on configuration flags.
 #******************************************************************
 """
-    variables_v2!(simulations_data::SimulationData, config_data::ConfigData)
+    variables!(simulations_data::SimulationData, config_data::ConfigData)
 
 Calculate derived physical variables for simulation data based on configuration flags.
 
@@ -951,7 +1157,7 @@ modifications of the `simulations_data` structure.
 - Applies numerical safeguards against small pressure values
 - All operations are element-wise and broadcasted over arrays
 """
-function variables_v2!(simulations_data::SimulationData, config_data::ConfigData)
+function variables!(simulations_data::SimulationData, config_data::ConfigData)
     # Extract required field data from simulations_data
     ene = simulations_data.ene
     den = simulations_data.den
@@ -994,7 +1200,7 @@ end
 # Purpose: calculate_temperature_pressure_velocity!
 #******************************************************************
 
-function variables_v0!(config_data::ConfigData)
+function variables!(config_data::ConfigData)
     # Calculate the 3D variables: tem and denh
     # Tem is needed for the ions.
 

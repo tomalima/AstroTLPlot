@@ -8,7 +8,7 @@
 # 3D fields via `mapas!` after computing derived variables with `compute_variable`.
 #
 # Author: [Tomás Lima]
-## Date: [2025-10-17]
+# Date: [2025-10-17]
 # ==============================================================================
 
 
@@ -28,8 +28,7 @@ const VAR_LIST = [
     "sentrop",
     "ramp",
     "rampok",
-    "dentok",   #not implemented 
-    
+    "dentok",   # not implemented 
     "ent",      # not in datastruct
     "mach",     # not in datastruct
     "val",      # not in datastruct
@@ -40,9 +39,14 @@ const VAR_LIST = [
     "beta"      # not in datastruct
 ]
 
+# ==============================================================================
+#
+# 
+#
+# ==============================================================================
 
 """
-    carregar_data()
+    load_data()
 
 Load and configure simulation data from configuration files and input data sources.
 
@@ -79,13 +83,12 @@ simulation variables. The function orchestrates the entire data preparation work
 
 # Example
 ```julia
-carregar_data()  # Loads and prepares all simulation data
+load_data()  # Loads and prepares all simulation data
 """
 
 function load_data()
 
         # Read data from configuration file
-        # Load and test the function
         file_name = "./data/config/indatpgp.yaml"
         
         #data = YAML.load_file(file_name)
@@ -108,7 +111,6 @@ function load_data()
 
        # Read reference data from ref.dat - generates TimeFile with time::Vector{Float64} and files::Vector{Int} 
         timefile = read_ref_data_ds(filename, nfiles, timescale)
-
             
         # Load HDF5 simulation data (alternative version commented out)
         # readdata_hdf5_v4_alt!(simulations_data, config_data, runtime_data)
@@ -117,7 +119,13 @@ function load_data()
         # Process variables - reads and computes additional variables (tem, pre, vel2, etc.)
         variables_v2!( simulations_data,config_data)
  end
+ 
 
+# ==============================================================================
+#
+# Compute and return a specific physical variable from simulation data.
+#
+# ============================================================================== 
 
 """
     compute_variable(var_name::String, simdata::SimulationData;
@@ -143,39 +151,46 @@ involving combinations of multiple fields and physical constants.
 # Supported Variables
 
 ## Basic Fields
-- `"den"`: Density field
-- `"ene"`: Energy density field
-- `"pre"`: Pressure field
-- `"tem"`: Temperature field
-- `"vxx", "vyy", "vzz"`: Velocity components
-- `"bxx", "byy", "bzz"`: Magnetic field components
+- `"den"`: Density field  
+- `"ene"`: Energy density field  
+- `"pre"`: Pressure field  
+- `"tem"`: Temperature field  
+- `"vxx"`, `"vyy"`, `"vzz"`: Velocity components  
+- `"bxx"`, `"byy"`, `"bzz"`: Magnetic field components  
 
 ## Derived Quantities
-- `"vel2"`: Velocity magnitude squared (v² = vx² + vy² + vz²)
-- `"pok"`: Pressure normalized by Boltzmann constant (pre/BOLTZ)
-- `"sentrop"`: Entropy field
-- `"ram"`: Dynamic pressure (0.5 * den * vel²)
-- `"rok"`: Dynamic pressure normalized by Boltzmann constant
-- `"ent"`: Entropy (alternative calculation)
-- `"mach"`: Mach number (velocity/sound speed)
-- `"val"`: Alfvén velocity
-- `"bxy"`: Magnetic field magnitude normalized by scale
-- `"Pmg"`: Magnetic pressure (B²/(8π))
-- `"beta"`: Plasma beta parameter (thermal pressure/magnetic pressure)
+- `"vel2"`: Velocity magnitude squared (v² = vx² + vy² + vz²)  
+- `"pok"`: Pressure normalized by Boltzmann constant (pre / BOLTZ)  
+- `"sentrop"`: Entropy field  
+- `"ram"`: Dynamic pressure (0.5 * den * vel²)  
+- `"rok"`: Dynamic pressure normalized by Boltzmann constant  
+- `"ent"`: Entropy (alternative formulation)  
+- `"mach"`: Mach number (velocity / sound speed)  
+- `"val"`: Alfvén velocity  
+- `"bxy"`: Magnetic field magnitude (normalized)  
+- `"Pmg"`: Magnetic pressure (B² / (8π))  
+- `"beta"`: Plasma beta parameter (thermal pressure / magnetic pressure)  
 
 # Precomputed Quantities
-- Magnetic field squared: `b2 = bxx² + byy² + bzz²`
-- Velocity squared: `vel2 = vxx² + vyy² + vzz²`
+- Magnetic field squared: `b2 = bxx² + byy² + bzz²`  
+- Velocity squared: `vel2 = vxx² + vyy² + vzz²`  
+  (Both are recomputed in this function for clarity and safety.)
 
 # Physical Constants Used
-- `AstroTLPlot.BOLTZ`: Boltzmann constant
-- `AstroTLPlot.MH`: Hydrogen mass
-- `AstroTLPlot.GAMMA`: Adiabatic index
-- `AstroTLPlot.GAMMA1`: Gamma - 1
+- `AstroTLPlot.BOLTZ`: Boltzmann constant  
+- `AstroTLPlot.MH`: Hydrogen mass  
+- `AstroTLPlot.GAMMA`: Adiabatic index  
+- `AstroTLPlot.GAMMA1`: γ − 1  
 
 # Error Handling
-- Throws an error if an unknown variable name is provided
-- Returns `nothing` for unsupported variables (e.g., "dentok")
+- Throws an error if an unknown variable name is provided.  
+- Returns `nothing` for unsupported or placeholder variables (e.g. `"dentok"`).  
+- Logs warnings for incomplete or placeholder implementations (`"SSS"`).
+
+# Additional Notes
+- Some derived quantities (entropy, Mach number, dynamic pressure) include protection against `log10(0)` or division by zero using small numerical floors (e.g., `1e-30`).
+- The function currently recomputes `b2` and `vel2` even if preallocated—kept for clarity and functional isolation.
+- The `"SSS"` branch appears to be an experimental or placeholder calculation for plasma beta; maintained unchanged.
 
 # Example
 ```julia
@@ -185,6 +200,7 @@ mach_number = compute_variable("mach", simdata, cfg=cfg, pgp=pgp, rt=rt, modions
 # Compute magnetic pressure
 mag_pressure = compute_variable("Pmg", simdata, cfg=cfg, pgp=pgp, rt=rt, modions=modions)
 """
+
 function compute_variable(var_name::String, simdata::SimulationData;
                             cfg::ConfigData, pgp::PGPData, rt::RuntimeData, modions::ModionsData)
     # Extract grid dimensions from configuration
@@ -243,7 +259,7 @@ function compute_variable(var_name::String, simdata::SimulationData;
     elseif var_name == "ram" #ramp
         # Dynamic pressure: p_ram = 0.5 * den * vel²
         simdata.ramp   .= 0.5 .* simdata.den .* simdata.vel2
-         # Optional logarithmic scaling (commented out)
+        # Optional logarithmic scaling (commented out)
         # if configData.logs
         #    simdata.pram   .= log10.(max.(1e-30, simdata.pram))
         # end
@@ -321,9 +337,9 @@ end
 
 # ==============================================================================
 #
-# compute all variable return to data structures ??
+# compute all variable return to data structures 
 #
-
+# ==============================================================================
 
 """
     setminmaxvar(variable::String, pgp::PGPData, modions::ModionsData)
@@ -401,6 +417,10 @@ function setminmaxvar(variable::String, pgp::PGPData, modions::ModionsData)
 end
 
 # ==============================================================================
+#
+# Automatically processes all 3D fields in a `SimulationData` object by generating maps/plots for each variable.
+#
+# ==============================================================================
 
 """
     process_simulation_files(simdata::SimulationData;
@@ -437,14 +457,12 @@ compute_variable: Preprocesses individual variables
 mapas!: Generates maps and plots for 3D data
 """
 
-
 function process_simulation_files_old(simdata::SimulationData; # not files but simulatind da from file
                             cfg::ConfigData, pgp::PGPData, rt::RuntimeData, modions::ModionsData)
 
       save_path="./figures/mavil"
     # Create output directory if it doesn't exist 
     isdir(save_path) || mkdir(save_path)
-    
 
     # Iterate over all fields in the struct
     for field in fieldnames(SimulationData)
@@ -472,6 +490,11 @@ function process_simulation_files_old(simdata::SimulationData; # not files but s
 end
 
 # ==============================================================================
+#
+# Iterate over all fields in a `SimulationData` instance and generate plots/maps for each
+# dataset that is a 3D `Float64` array.
+#
+# ==============================================================================
 
 """
     process_simulation_files(
@@ -480,9 +503,9 @@ end
         pgp::PGPData,
         rt::RuntimeData,
         modions::ModionsData,
-        formats::Vector{String} = ["png"],               # NEW: output formats to use
-        save_path::AbstractString = "./figures/mavil",   # NEW: base output path
-        include_computed::Bool = true                    # NEW: compute processed variables before plotting
+        formats::Vector{String} = ["png"],               
+        save_path::AbstractString = "./figures/mavil",   
+        include_computed::Bool = true                   
     ) -> Nothing
 
 Iterate over all fields in a `SimulationData` instance and generate plots/maps for each
@@ -519,10 +542,10 @@ Requires in scope: `compute_variable`, `mapas!`, and types `SimulationData`, `Co
 - Use structured logging (`@info`) in production for better traceability.
 """
 function process_simulation_files(simdata::SimulationData;
-                                  cfg::ConfigData, pgp::PGPData, rt::RuntimeData, modions::ModionsData,
-                                  formats::Vector{String} = ["png"],               # NEW
-                                  save_path::AbstractString = "./figures/mavil",   # NEW
-                                  include_computed::Bool = true                    # NEW
+    cfg::ConfigData, pgp::PGPData, rt::RuntimeData, modions::ModionsData,
+    formats::Vector{String} = ["png"],               
+    save_path::AbstractString = "./figures/mavil",   
+    include_computed::Bool = true                    
 )
     # Ensure base output directory exists
     isdir(save_path) || mkdir(save_path)
@@ -561,79 +584,10 @@ function process_simulation_files(simdata::SimulationData;
 end
 
 # ==============================================================================
-
-"""
-    process_simulation(
-        simdata::SimulationData;
-        cfg::ConfigData, 
-        pgp::PGPData, 
-        rt::RuntimeData, 
-        modions::ModionsData,
-        variable_names::Vector{String}
-    )
-
-Main simulation processing function.
-
-Instead of extracting variable names from `SimulationData`,
-this version takes a variable names (`variable_names`)
-and performs preprocessing .
-
-# Arguments
-- `simdata::SimulationData`: Main simulation data object
-- `cfg::ConfigData`: Configuration data
-- `pgp::PGPData`: Plot/graphics settings
-- `rt::RuntimeData`: Runtime execution data
-- `modions::ModionsData`: Ions configuration
-- `var_name::String`:validated variable name to process
-"""
-function process_variable_old(var_name::String,
-    simdata::SimulationData;
-    kern,ionz,is_ions, # %%%%%%%
-    cfg::ConfigData, 
-    pgp::PGPData, 
-    rt::RuntimeData, 
-    modions::ModionsData
-)
-    save_path="./figures/mavil"
-    # Create output directory if it doesn't exist
-    isdir(save_path) || mkdir(save_path)
-
-        # Preprocess variable
-        data_to_plot = compute_variable(var_name,simdata;
-            cfg,pgp,rt, modions )
-
-        # If the function cannot process the variable, skip it
-        if data_to_plot === nothing
-            println(" Variable $var_name could not be processed, skipping.")
-            nothing
-        end
-        
-         # Only continue if it's a 3D Float64 Array
-        if !(data_to_plot isa AbstractArray{Float64,3})
-            println(" Variable $var_name is not an Array{Float64,3}, skipping.")
-            return nothing
-        end
-        
-         # Create subfolder for each variable
-        subdir = joinpath(save_path, var_name)
-        isdir(subdir) || mkdir(subdir)
-        
-      #= # If called here ==> implies passing as parameters
-         # Determine min/max for color scale
-           result = setminmaxvar(var_name, pgp)
-           smin, smax = result === nothing ? (0.0, 0.0) : result 
-           =#
-        
-        # Generate maps/plots for the variable
-        mapas!(data_to_plot, simdata.X_grid, simdata.Y_grid, simdata.Z_grid,var_name;
-                   kern,ionz,is_ions,   #is_ions=true
-                   cfg=cfg, pgp=pgp, rt=rt, modions=modions)
-    return true
-        
-end
-# =====================================
-
-
+#
+# Compute and plot a simulation variable by name.
+#
+# ==============================================================================
 """
     process_variable(
         var_name::String,
@@ -646,10 +600,12 @@ end
         rt::RuntimeData,
         modions::ModionsData,
         formats::Vector{String} = ["png"],
-        save_path::AbstractString = "./figures/mavil"
+        save_path::AbstractString = "./figures/mavil",
+        id_string::AbstractString,                 
+        root::AbstractString = "output_fair"       
     ) -> Bool
 
-Compute and plot a simulation variable by name.
+
 
 This function:
 1) Computes the requested variable via `compute_variable(var_name, simdata; ...)`.
@@ -665,11 +621,19 @@ This function:
 - `formats::Vector{String}`: Output formats to save (e.g., `["png"]`, `["pdf","png"]`, `["svg"]`).
 - `save_path::AbstractString`: Base output directory; a subfolder per variable is created.
 
+# Additional Keywords
+- `id_string::AbstractString`: Snapshot identifier forwarded to the downstream plotting dispatcher (`maps!`)
+  so that FAIR‑compliant folder structures can be created automatically
+  (e.g. `<root>/snapshots/<id>/variables/<var_name>/...`) and included in filenames.
+- `root::AbstractString = "output_fair"`: FAIR root directory for plot outputs.
+
 # Returns
 - `Bool`: `true` if plotting was dispatched; `false` if the variable could not be processed.
 
 # Dependencies
-Requires `compute_variable` and `mapas!` to be in scope. `mapas!` should accept `formats` and a `save_path`/`base_save_path` kwarg.
+Requires `compute_variable` and `mapas!` to be in scope. `mapas!` should accept `formats`
+and FAIR-related keywords (`id_string`, `root`) or a `save_path`/`base_save_path` kwarg.
+- FAIR pathing is handled downstream via `maps!` using `id_string` and `root`.
 
 # Notes
 - If `compute_variable` supports a precomputed cache, it can be passed here for efficiency.
@@ -686,12 +650,9 @@ function process_variable(
     rt::RuntimeData,
     modions::ModionsData,
     formats::Vector{String} = ["png"],
-    save_path::AbstractString = "./figures/mavil"
+    id_string::AbstractString,                 
+    root::AbstractString = "output_fair"      
 ) :: Bool
-
-    #base_save_path =joinpath(save_path, var_name) 
-    # Ensure the base output directory exists
-    isdir(save_path) || mkdir(save_path)
 
     # Compute the requested variable
     data_to_plot = compute_variable(var_name, simdata; cfg = cfg, pgp = pgp, rt = rt, modions = modions)
@@ -708,20 +669,22 @@ function process_variable(
         return false
     end
 
-    # Create per-variable subfolder
-    subdir = joinpath(save_path, var_name)
-    isdir(subdir) || mkdir(subdir)
-
     # Generate maps/plots (forward formats and a variable-specific save path)
     maps!(data_to_plot, simdata.X_grid, simdata.Y_grid, simdata.Z_grid, var_name;
            kern = kern, ionz = ionz, is_ions = is_ions,
            cfg = cfg, pgp = pgp, rt = rt, modions = modions,
-           formats = formats, save_path = subdir)
+           formats = formats,
+          id_string = id_string,      
+          root = root)               
+
     return true
 end
 
 # ==============================================================================
-
+#
+# Process a list of variable names for a given simulation dataset and generate plots/maps for each.
+#
+# ==============================================================================
 """
     process_simulation_list(
         simdata::SimulationData;
@@ -733,8 +696,10 @@ end
         rt::RuntimeData,
         modions::ModionsData,
         variable_names::Vector{String},
-        formats::Vector{String} = ["png"],                   # NEW: output formats to use
-        save_path::AbstractString = "./figures/mavil"        # NEW: base output path for all variables
+        formats::Vector{String} = ["png"],                   
+        save_path::AbstractString = "./figures/mavil",       
+        filenum::Union{Int,String},                          
+        root::AbstractString = "output_fair"                 
     ) -> Nothing
 
 Process a list of variable names for a given simulation dataset and generate plots/maps for each.
@@ -757,6 +722,13 @@ For each entry in `variable_names`, this function:
 - `formats::Vector{String}`: Output formats to save (e.g., `["png"]`, `["pdf","png"]`, `["svg"]`).
 - `save_path::AbstractString`: Base folder under which per-variable subfolders are created.
 
+# Additional Keywords
+- `filenum::Union{Int,String}`: Snapshot index/identifier used to construct a canonical `id_string`
+  (e.g., `"all003000"`) via `build_id_string(filenum)`. This `id_string` é passado a jusante para naming
+  consistente dos ficheiros e construção de diretórios FAIR.
+- `root::AbstractString = "output_fair"`: Diretório raiz FAIR. É encaminhado a jusante para que as funções
+  de mapeamento (`maps!` e wrappers) criem a árvore de output FAIR-compliant.
+
 # Returns
 - `Nothing`. Side effects include generating plots and saving files to disk.
 
@@ -764,8 +736,9 @@ For each entry in `variable_names`, this function:
 Requires `process_variable` in scope, and types: `SimulationData`, `ConfigData`, `PGPData`, `RuntimeData`, `ModionsData`.
 
 # Notes
-- `process_variable` is expected to accept and forward `formats` and `save_path` to its downstream plotting logic.
-- Use `@info`/`@warn` for structured logging in production instead of `println`.
+- `process_variable` é chamado com `id_string` (derivado de `filenum`) e `root`, garantindo naming consistente
+  e organização FAIR nas funções de plot a jusante.
+- Use `@info`/`@warn` para *structured logging* em produção em vez de `println`.
 """
 function process_simulation_list(
     simdata::SimulationData;
@@ -777,23 +750,34 @@ function process_simulation_list(
     rt::RuntimeData,
     modions::ModionsData,
     variable_names::Vector{String},
-    formats::Vector{String} = ["png"],               # NEW: parameterize formats
-    save_path::AbstractString = "./figures/mavil"    # NEW: parameterize base path
-)
+    formats::Vector{String} = ["png"],           
+    filenum::Union{Int,String},                  
+    root::AbstractString = "output_fair"         
+  )
+    # Build snapshot id_string like "all003000" from the provided filenum
+    id_string = build_id_string(filenum)
+
     # === Loop over validated variable names ===
     for var_name in variable_names
         println("Processing variable: ", var_name)
-
         # Preprocess and plot each variable
+        # Delegate per-variable work, forwarding id_string/root
         process_variable(var_name, simdata;
                              kern = kern, ionz = ionz, is_ions = is_ions,
                              cfg = cfg, pgp = pgp, rt = rt, modions = modions,
-                             formats = formats,         # forward formats
-                             save_path = save_path)     # save_path = save_path)     # forward base output path
+                             formats = formats,          # forward formats
+                             #save_path = save_path)     # save_path = save_path)     # forward base output path
+                            id_string = id_string,     
+                            root = root                
+            ) 
     end
  return nothing
 end
 
+# ==============================================================================
+#
+# 
+#
 # ==============================================================================
 
 function index_to_coord(ix::Int, iy::Int, nx, ny, xrange, yrange)

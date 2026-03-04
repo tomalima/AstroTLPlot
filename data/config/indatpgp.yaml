@@ -1,5 +1,5 @@
 Debug:
-  ldebug: true
+  ldebug: false
 Directories:
   directory: 'data/input/dados-disk-2000x2000x1/'
   diratomic: './data/input/Atomic'

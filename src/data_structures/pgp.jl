@@ -134,14 +134,6 @@ mutable struct mainPGP
     title::Title
     device::Device
     flags::Bool                # General configuration flag
-    #=
-    # Global and local extrema for various quantities
-    gl_den::GLMinMax           # Density
-    gl_tem::GLMinMax           # Temperature
-    gl_pre::GLMinMax           # Pressure
-    gl_pram::GLMinMax          # Dynamic pressure
-    gl_entr::GLMinMax          # Entropy
-    gl_mach::GLMinMax =#       # Mach number
     global_min_max::GLobalMinMax
 end
 

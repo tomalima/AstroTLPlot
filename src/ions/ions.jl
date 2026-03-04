@@ -1,4 +1,28 @@
+# ==============================================================================
+# Ion Species and Ionization Utilities Module
+#
+# This module defines data structures and utility functions related to chemical
+# elements, charge states, and ionization bookkeeping used throughout the
+# simulation and visualization pipeline. It includes:
+#   • Element and ionization state metadata (IDs, symbols, kernel mappings)
+#   • Conversions between (element, ion) indices and array dimensions
+#   • Human-readable labeling utilities (e.g., ionstexto) for plots/reports
+#   • Validation helpers for bounds and availability of ion states
+#   • Convenience methods to query ranges, names, and display strings
+#
+# Notes:
+#   - Keep physics/chemistry *models* (rates, collisional physics) elsewhere.
+#   - This module focuses on *metadata*, *indexing*, and *presentation helpers*
+#     for ion-related data (e.g., xionvar slices).
+#
+# Author: Tomás Lima
+# Date: 2026-03-03
+# ==============================================================================
+``
+
 using DelimitedFiles
+using Printf
+
 
 # ==============================================================================
 # Function: create_ionproperties
@@ -264,7 +288,10 @@ function count_ions(cfg::ConfigData)
     end
     element.nelem = icount
     element.kernmax = kernmax
-    println("N_elements, Z_max: ", element.nelem, ", ", element.kernmax)
+   
+  if cfg.debug.ldebug    
+     println("N_elements, Z_max: ", element.nelem, ", ", element.kernmax)
+  end 
 
     # Set IDs and ion ranges
     icount = 0
@@ -291,11 +318,11 @@ function count_ions(cfg::ConfigData)
 end
 
 # ==============================================================================
-# Function: ions_read_vf
+# Function: ions_read
 # Purpose:  Reads and processes atomic ionic fraction data from files, performing spline interpolation if configured.
 # ==============================================================================
 """
-    ions_read_vf(cfg::ConfigData, pgp::PGPData, rt::RuntimeData, modions::ModionsData, element::Element) -> TemperatureProperties
+    ions_read(cfg::ConfigData, pgp::PGPData, rt::RuntimeData, modions::ModionsData, element::Element) -> TemperatureProperties
 
 Reads and processes atomic ionic fraction data from files, performing spline interpolation if configured.
 
@@ -329,13 +356,13 @@ It handles file existence checks, data validation, and error conditions.
 ```julia
 config = ConfigData(...)
 element_data = Element(...)
-result = ions_read_vf(config, pgp_data, rt_data, modions_data, element_data)
+result = ions_read(config, pgp_data, rt_data, modions_data, element_data)
 
 """
-function ions_read_vf(cfg::ConfigData, pgp::PGPData, rt::RuntimeData, modions::ModionsData, element::Element)
+function ions_read(cfg::ConfigData, pgp::PGPData, rt::RuntimeData, modions::ModionsData, element::Element)
     # Extract configuration parameters
     lele_ = cfg.variable_params.lele
-    ncool = cfg.atomic_ionic_fraction.ncool # less +1  ?????
+    ncool = cfg.atomic_ionic_fraction.ncool 
     ntemp_spline = ncool
 
     kernmax = element.kernmax
@@ -387,7 +414,7 @@ function ions_read_vf(cfg::ConfigData, pgp::PGPData, rt::RuntimeData, modions::M
             # Process data in reverse order (matching Fortran convention)
             k = ncool
             for i in 1:ntemp_spline
-                 # Extract logarithmic temperature value
+                # Extract logarithmic temperature value
                 # read k = ncool-1, ncool-2, ..., 0)
                 alogt[k] = rawdata[i, 1]
                 
@@ -412,7 +439,7 @@ function ions_read_vf(cfg::ConfigData, pgp::PGPData, rt::RuntimeData, modions::M
                     ion_data = xion[element.idk[kern], ionz+1 , :]
                     
                     # Calculate spline coefficients
-                    spline_coeffs = spline3_coef_(ntemp_spline, alogt, ion_data)
+                    spline_coeffs = spline3_coef(ntemp_spline, alogt, ion_data)
                     xion_zs[element.idk[kern], ionz+1, :] = spline_coeffs
                 end
             end
@@ -509,7 +536,7 @@ function abundances!(cfg::ConfigData, elem::Element)
         elem.abund[6]  = -3.61
         elem.abund[7]  = -4.22
         elem.abund[8]  = -3.34
-        elem.abund[10] = -3.71  # Ne overabundance (Drake & Testa 2005)
+        elem.abund[10] = -3.71  
         elem.abund[12] = -4.47
         elem.abund[14] = -4.49
         elem.abund[16] = -4.86
@@ -609,7 +636,7 @@ function fractions_spline!(kern::Int, ionz::Int,
    # retrieve abundance for kern (element.abund indexed by atomic number)
     abund_k = element.abund[kern]
    # Get element identifier in internal indexing scheme
-    eid = element.idk[kern]           # careful: idk indexed by atomic number
+    eid = element.idk[kern]           # idk indexed by atomic number
 
     # Extract configuration flags
     lspline = cfg.interpolation.lspline
@@ -631,8 +658,10 @@ function fractions_spline!(kern::Int, ionz::Int,
     kmax = min(Int(cfg.real_dims.max.z), kn_dim)
    
     # Debug: print bounds to verify
-    println("Grid dimensions: $in_dim x $jn_dim x $kn_dim")
-    println("Loop bounds: i=$imin:$imax, j=$jmin:$jmax, k=$kmin:$kmax")
+    if cfg.debug.ldebug   
+        println("Grid dimensions: $in_dim x $jn_dim x $kn_dim")
+        println("Loop bounds: i=$imin:$imax, j=$jmin:$jmax, k=$kmin:$kmax")
+    end
     # Additional configuration parameters     
     lele = cfg.variable_params.lele
     ntemp_spline = cfg.atomic_ionic_fraction.ncool - 1
@@ -669,7 +698,7 @@ function fractions_spline!(kern::Int, ionz::Int,
                 temper = log10(tval)
                 if tmin <= temper <= tmax
                     # evaluate spline: returns fraction xi(T)
-                    enloss = spline3_eval2(ntemp_spline, alogt, xion_data, xion_zs_data, temper)
+                    enloss = spline3_eval(ntemp_spline, alogt, xion_data, xion_zs_data, temper)
 
                     # Compute ion fraction: abundance × density × interpolated fraction
                     frac[ii, jj, kk] = element.abund[kern] * sml.den[ii, jj, kk] * enloss
@@ -725,7 +754,6 @@ get_element_name(8)   # Returns "O"
 get_element_name(26)  # Returns "Fe"
 get_element_name(99)  # Returns "X" (unsupported element)
 """
-# Função auxiliar para obter nome do elemento (se necessário)
 function get_element_name(atomic_number::Int)::String
     element_names = Dict(
         1 => "H",   # Hydrogen
@@ -743,6 +771,22 @@ function get_element_name(atomic_number::Int)::String
     return get(element_names, atomic_number, "X")
 end
 
+function get_element_fname(atomic_number::Int)::String
+    element_names = Dict(
+        1 => "Hydrogen",    # Hydrogen
+        2 => "Helium",      # Helium
+        6 => "Carbon",      # Carbon
+        7 => "Nitrogen",    # Nitrogen
+        8 => "Oxygen",      # Oxygen
+        10 => "Neon",       # Neon
+        12 => "Magnesium",  # Magnesium
+        14 => "Silicon",    # Silicon
+        16 => "Sulfur",     # Sulfur
+        18 => "Argon",      # Argon
+        26 => "Iron"        # Iron
+    )
+    return get(element_names, atomic_number, "X")
+end
 # ==============================================================================
 # Function: ionstexto
 # Purpose:  Generate standardized labels and identifiers for elements and ionization states
@@ -942,10 +986,6 @@ function ionstexto(kern::Int, ionlev::Int)::IonLabels
         titleion_str = "$(element_name) $(ionlev+1)"
         labelion_str = "log n($(element_name) $(ionlev+1))"
     end
-    
-    # Diagnostic output
-    println("IONSTEXTO: ion ", ion_str)
-    
     return IonLabels(ion_str, titleion_str, labelion_str)
 end
 
@@ -968,13 +1008,9 @@ log-space loss function parameters `rlamba`, `beta`, `rlamb0`.
    function rloss!(ionp::IonProperties,ncool_::Int)::Int  
    #ncool = length(tcool) # ncool = cfg.atomic_ionic_fraction.ncool
 
-   ncool = ncool_ #161  #cfg.atomic_ionic_fraction.ncool
+   ncool = ncool_ #cfg.atomic_ionic_fraction.ncool
 
    tcool=ionp.tcool  
-   #ncool = length(tcool) # you must pass the ncool information
-    
-  # @assert ncool >= 2 "tcool must have at least 2 points"
-
     # compute minimum log spacing dtmin = min(log10(tcool[i+1]) - log10(tcool[i]))
     dtmin = 1.e16
     for i in 2:ncool-1
@@ -993,7 +1029,6 @@ log-space loss function parameters `rlamba`, `beta`, `rlamb0`.
     ionp.dtf     = dtf
 
     # initialize first point (Fortran used index 0 -> Julia index 1)
-    # 4. Inicialização do Primeiro Ponto (i=0)
     ionp.tcf[1]    = ionp.tcool[1]
     ionp.rlamba[1] = ionp.rlambc[1]
     # beta[1] uses rlambc[2] and rlambc[1]
@@ -1341,7 +1376,7 @@ function mapfractions!(kern::Int, ncoolf::Int, frac::Array{Float64,3},
                        ionp::IonProperties, tepr::TemperatureProperties,
                        elem::Element, sml::SimulationData, cfg::ConfigData, rt::RuntimeData)
 
-    println("MAP_FRACTION INSIDE!!!")
+   # println("MAP_FRACTION INSIDE!!!")
 
     # Extract grid dimensions from configuration
     in_dim = cfg.grid_size.grid_point.x
@@ -1424,130 +1459,10 @@ function mapfractions!(kern::Int, ncoolf::Int, frac::Array{Float64,3},
 end
 
 # ==============================================================================
-# Function: ions!
-# Purpose: Calculate and visualize ion population fractions across grid domains
+#
+# Compute ion fractions for all configured elements and ionization states
+#
 # ==============================================================================
-"""
-    ions!(ionp::IonProperties, temprops::TemperatureProperties, elem::Element,
-          sml::SimulationData, cfg::ConfigData, pgp::PGPData, rt::RuntimeData, modions::ModionsData)
-
-Calculate ion population fractions and generate visualization maps for all elements and ionization states.
-
-This function processes ionization data for multiple elements across the simulation grid,
-computing ion population fractions using either spline interpolation or legacy methods,
-and generates 2D projection maps for visualization of ionization states.
-
-# Arguments
-- `ionp::IonProperties`: Ion property data structure
-- `temprops::TemperatureProperties`: Temperature-dependent properties and ion fractions
-- `elem::Element`: Element composition and atomic data
-- `sml::SimulationData`: Simulation field data including grid coordinates
-- `cfg::ConfigData`: Configuration parameters for interpolation and scaling
-- `pgp::PGPData`: Post-processing and visualization parameters
-- `rt::RuntimeData`: Runtime data and state information
-- `modions::ModionsData`: Ionization module specific data
-
-# Processing Workflow
-1. **Initialization**: Extract element properties and configuration flags
-2. **Ion Fraction Calculation**: Iterate through all elements and ionization states
-3. **Interpolation**: Use either spline or legacy method for ion fraction calculation
-4. **Scaling**: Apply logarithmic scaling if configured
-5. **Visualization**: Generate 2D maps for selected elements and ionization states
-
-# Key Features
-- Supports multiple interpolation methods (spline, legacy)
-- Configurable logarithmic scaling for visualization
-- Selective plotting based on element flags
-- Comprehensive iteration through all ionization states
-
-# Notes
-- Modifies `temprops.xionvar` in-place with calculated ion fractions
-- Generates visualization maps via `mapas_ions!` function
-- Includes diagnostic output for processing tracking
-"""
-function ions_old!(ionp::IonProperties, temprops::TemperatureProperties,
-        elem::Element,
-        sml::SimulationData,
-        cfg::ConfigData, 
-        pgp::PGPData, rt::RuntimeData, modions::ModionsData)
-
-    # Extract element properties and atomic data
-    kernmax = elem.kernmax      # Maximum number of elements to process
-    nelem   = elem.nelem        # Number of elements
-    zelem   = elem.zelem        # Element atomic numbers
-    plelem  = elem.plelem       # Plotting flags for each element
-    idk     = elem.idk          # Element identification keys
-    idkmin  = elem.idkmin       # Minimum ID bounds
-    idkmax  = elem.idkmax       # Maximum ID bounds
-
-    # Extract configuration flags
-    lspline = cfg.interpolation.lspline  # Spline interpolation flag
-    lrloss  = true                       # Legacy method flag (hardcoded for now)
-    logs    = cfg.scales.logs            # Logarithmic scaling flag
-    lratios = cfg.variable_params.lratios # Ion ratio calculation flag
-
-    # Extract grid dimensions
-    in_dim = cfg.grid_size.grid_point.x
-    jn_dim = cfg.grid_size.grid_point.y  
-    kn_dim = cfg.grid_size.grid_point.z
-
-    # Initialize ion fraction array
-    temprops.xionvar .= 0.0
-
-    println("Starting IONS processing")
-    
-    # Iterate through all elements and ionization states
-    for kern in 1:kernmax
-        if zelem[kern]  # Process only valid elements
-            for ionz in 0:kern  # Iterate through all ionization states
-                # Calculate ion fractions using selected interpolation method
-                println("Calling fractions for kern=$(kern), ionz=$(ionz+1)")
-                
-                if lspline
-                    # Spline interpolation method (commented out for now)
-                    # fractions_spline!(kern, ionz+1, temprops, cfg, pgp, rt, modions, elem)
-                    println("  fractions_spline! executed")
-                elseif lrloss
-                    # Legacy interpolation method
-                    fractions_old!(kern, ionz, ionp, temprops, elem, sml, cfg, pgp, rt, modions)
-                    println("  fractions_old! executed for element $kern and ionization state $(ionz+1)")
-                end
-
-                # Initialize fraction array for current ionization state
-                fracion = zeros(in_dim, jn_dim, kn_dim)
-                
-                # Apply scaling (logarithmic or linear) based on configuration
-                #=  if cfg.scales.logs
-                    fracion .= log10.(temprops.xionvar[1:in_dim, 1:jn_dim, 1:kn_dim, elem.idk[kern], ionz+1])
-                else
-                    fracion .= temprops.xionvar[1:in_dim, 1:jn_dim, 1:kn_dim, elem.idk[kern], ionz+1]
-                end
-                =#
-
-                fracion .= temprops.xionvar[1:in_dim, 1:jn_dim, 1:kn_dim, elem.idk[kern], ionz+1] #new
-                # Generate visualization maps for selected elements
-                if elem.plelem[kern]
-                    # Create ion fraction maps using grid coordinates
-                    mapas_ions!(fracion, sml.X_grid, sml.Y_grid, sml.Z_grid, "den"; 
-                               kern=kern, ionz=ionz, is_ions=true, cfg=cfg, pgp=pgp, rt=rt, modions=modions)
-                end
-            end
-        end
-    end
-    
-    println("Ion maps completed, proceeding to electron calculations")
-    
-    # Calculate and plot ion ratios if configured
-    if lratios
-        # maps_ratios(temprops, element, sml, cfg)  # To be implemented
-    end
-    
-    return nothing
-end
-
-
-# =====================================================================
-
 
 """
     ions!(
@@ -1560,8 +1475,8 @@ end
         rt::RuntimeData,
         modions::ModionsData;
         method::Symbol = :auto,
-        formats::Vector{String} = ["png"],                      # NEW: output formats
-        base_save_path::AbstractString = "./data/output/ions"  # NEW: base folder for ion maps
+        formats::Vector{String} = ["png"],                     
+        base_save_path::AbstractString = "./data/output/ions" 
     ) -> Nothing
 
 Compute ion fractions for all configured elements and ionization states, populate
@@ -1587,13 +1502,25 @@ via `mapas_ions!`.
 - `formats::Vector{String}`: Output formats forwarded to `mapas_ions!` (e.g., `["png"]`, `["pdf","png"]`).
 - `base_save_path::AbstractString`: Base folder used by `mapas_ions!` to save outputs.
 
+# Additional Keywords
+- `id_string::AbstractString`: Snapshot identifier forwarded to downstream routines to create FAIR-compliant
+  folder structures (e.g., `<root>/snapshots/<id>/species/ions/...`) and to derive a numeric `filenum` for filenames.
+- `root::AbstractString = "output_fair"`: Root directory used by FAIR path helpers (e.g., `prepare_ion_paths`).
+
 # Behavior
 1. Reads element properties and configuration flags.
 2. Zeros out `temprops.xionvar` before computation.
-3. For each valid element `kern` (where `elem.zelem[kern] == true`) and ion state `ionz` in `0:kern`:
-   - Calls the selected interpolation routine to fill `temprops.xionvar[... , elem.idk[kern], ionz+1]`.
-   - Copies the 3D block into `fracion`.
-   - If `elem.plelem[kern]` is true, calls `mapas_ions!` to visualize the ion fraction volume.
+3. Chooses the interpolation method:
+   - `:auto` → `:spline` if `cfg.interpolation.lspline == true`, otherwise `:legacy`.
+   - `:legacy` → calls `fractions_old!`.
+   - `:spline` → placeholder (enable `fractions_spline!` when available).
+4. For each valid element `kern` (where `elem.zelem[kern] == true`) and ion state `ionz` in `0:kern`:
+   - Calls the chosen interpolation to fill `temprops.xionvar[... , elem.idk[kern], ionz+1]`.
+   - Copies the relevant 3D block into `fracion`.
+   - If `elem.plelem[kern]` is `true`, dispatches to `mapas_ions!` to visualize the ion fraction volume,
+     forwarding `formats`, `id_string`, and `root` to keep FAIR outputs consistent.
+5. After looping ion states, if `elem.plelem[kern]` is `true`, generates an **element-level subplot panel**
+   with `plot_element_subplot`, saving to a FAIR path under the element directory (e.g., `.../subplots/`).
 
 # Returns
 - `Nothing`. Side effects include populating `xionvar` and generating plots.
@@ -1601,22 +1528,27 @@ via `mapas_ions!`.
 # Dependencies
 Requires in scope:
 - Interpolation: `fractions_old!` and/or `fractions_spline!` (if you enable spline mode).
-- Plotting: `mapas_ions!` (ideally extended to accept `formats` and `base_save_path`).
+- Plotting: `mapas_ions!` (accepting `formats`, FAIR paths via `id_string`/`root`) and `plot_element_subplot`.
+- FAIR/paths & I/O: `prepare_ion_paths` (used inside downstream calls), `mkpath` for directory creation.
 - Types: `IonProperties`, `TemperatureProperties`, `Element`, `SimulationData`, `ConfigData`, `PGPData`, `RuntimeData`, `ModionsData`.
+- Labels: `ionstexto` (used to resolve element symbol and ion labels when building element subplot paths).
 
 # Notes
 - `method = :auto` respects `cfg.interpolation.lspline`; set `:legacy` to force the old method or `:spline` if available.
 - `temprops.xionvar` is assumed preallocated with shape `(in_dim, jn_dim, kn_dim, nelements, nions_per_element)`.
-- If your `mapas_ions!` does not yet accept `formats`/`base_save_path`, update it to keep the pipeline consistent.
+- `mapas_ions!` is called with `fracion` and `var_name = "den"` in this pipeline; adjust if you prefer a different variable tag.
+- The element-level subplot export uses FAIR-style directories based on `id_string`, element symbol, and `root`.
 """
+
 function ions!(ionp::IonProperties, temprops::TemperatureProperties,
                elem::Element,
                sml::SimulationData,
                cfg::ConfigData,
                pgp::PGPData, rt::RuntimeData, modions::ModionsData;
                method::Symbol = :auto,
-               formats::Vector{String} = ["png"],                     # NEW
-               base_save_path::AbstractString = "./data/output/maps/ions"  # NEW
+               formats::Vector{String} = ["pdf"],
+               id_string::AbstractString,                 
+               root::AbstractString = "output_fair"      
 )
     # --- Element properties and atomic data ---
     kernmax = elem.kernmax         # Maximum element index to process
@@ -1652,17 +1584,17 @@ function ions!(ionp::IonProperties, temprops::TemperatureProperties,
             eid = idk[kern]
 
             for ionz in 0:kern
-                println("Calling fractions for kern=$(kern), ionz=$(ionz+1)")
+               # println("Calling fractions for kern=$(kern), ionz=$(ionz+1)")
 
                 # Compute ion fractions using the chosen interpolation method
                 if chosen_method == :spline
                     # Spline interpolation method (enable when implemented)
-                    # fractions_spline!(kern, ionz + 1, temprops, cfg, pgp, rt, modions, elem)
-                    println("  fractions_spline! executed (placeholder)")
+                    fractions_spline!(kern, ionz + 1, temprops, cfg, pgp, rt, modions, elem)
+                   # println("  fractions_spline! executed (placeholder)")
                 else
                     # Legacy interpolation method
                     fractions_old!(kern, ionz, ionp, temprops, elem, sml, cfg, pgp, rt, modions)
-                    println("  fractions_old! executed for element $kern and ionization state $(ionz+1)")
+                    #println("  fractions_old! executed for element $kern and ionization state $(ionz+1)")
                 end
 
                 # Extract the computed ion fraction block for this (kern, ionz)
@@ -1672,13 +1604,29 @@ function ions!(ionp::IonProperties, temprops::TemperatureProperties,
                 # Generate visualization maps for selected elements
                 if plelem[kern]
                     # Forward formats and base_save_path to keep the pipeline consistent
-                    mapas_ions!(fracion, sml.X_grid, sml.Y_grid, sml.Z_grid, "den";
+                                                                            
+                    maps_ions!(fracion, sml.X_grid, sml.Y_grid, sml.Z_grid, "den";
                                 kern = kern, ionz = ionz, is_ions = true,
                                 cfg = cfg, pgp = pgp, rt = rt, modions = modions,
-                                formats = formats,              # NEW: pass output formats
-                                save_path = base_save_path)     # NEW: pass base output folder
+                                formats = formats,             
+                                id_string=id_string,
+                                root=root)
                 end
-            end
+            end 
+           # generate subplot element
+           if plelem[kern]
+                # Obtain labels for this ionization state
+                ion_labels = ionstexto(kern, 0)
+                elem_sym = first(split(ion_labels.titleion))
+                elem_dir = joinpath(root, "snapshots", id_string, "species", "ions", elem_sym)
+                mkpath(elem_dir)
+                # Create subplots/ and save
+                subplots_dir = joinpath(elem_dir, "subplots")
+                mkpath(subplots_dir)
+                                
+                plot_element_subplot(temprops, sml, elem, kern;
+                    ncols=4, save_dir= subplots_dir, formats=["pdf"])
+           end
         end
     end
 
@@ -1691,398 +1639,3 @@ function ions!(ionp::IonProperties, temprops::TemperatureProperties,
 
     return nothing
 end
-
-# ==============================================================================
-# Function: plot_ion_heatmap
-# Purpose: Generate 2D heatmap visualizations of 3D ion fraction data
-# ==============================================================================
-
-"""
-    plot_ion_heatmap(data_3d, kern, ionz; slice_axis = :z, slice_index = 1, title_suffix = "")
-
-Generate 2D heatmap visualizations from 3D ion fraction data by slicing along specified axes.
-
-This function creates detailed 2D heatmap plots of ion population fractions by extracting
-slices from 3D simulation data. It supports slicing along any of the three spatial axes
-(X, Y, Z) and provides comprehensive labeling with element and ionization state information.
-
-# Arguments
-- `data_3d::Array{Float64,3}`: 3D array containing ion fraction data (typically from `temprops.xionvar`)
-- `kern::Int`: Element identifier/kernel number for labeling
-- `ionz::Int`: Ionization state for labeling
-
-# Keyword Arguments
-- `slice_axis::Symbol=:z`: Axis along which to slice (:x, :y, or :z)
-- `slice_index::Int=1`: Index position along the slicing axis
-- `title_suffix::String=""`: Additional text to append to the plot title
-
-# Visualization Features
-- Automatic logarithmic scaling of ion fraction data
-- Comprehensive labeling with element and ionization state information
-- Configurable slicing along X, Y, or Z axes
-- Professional color mapping using Viridis colormap
-- Proper aspect ratio preservation for accurate spatial representation
-
-# Output
-- Displays an interactive figure with heatmap and colorbar
-- Returns the figure object for further manipulation or saving
-
-# Example
-```julia
-# Plot a Z-slice at index 50 for element 6, ionization state 2
-plot_ion_heatmap(ion_data, 6, 2, slice_axis=:z, slice_index=50, title_suffix="Mid-plane")
-
-"""
-function plot_ion_heatmap(data_3d, kern, ionz; slice_axis = :z, slice_index = 1, title_suffix = "")
-    # Apply logarithmic scaling to ion fraction data for better visualization
-    log_data = log10.(data_3d)
-
-    # Extract 2D slice based on specified axis and index
-    if slice_axis == :x
-        slice_data = log_data[slice_index, :, :]
-        slice_info = "Slice X = $slice_index"
-    elseif slice_axis == :y
-        slice_data = log_data[:, slice_index, :]
-        slice_info = "Slice Y = $slice_index"
-    else  # Default: slice along Z-axis
-        slice_data = log_data[:, :, slice_index]
-        slice_info = "Slice Z = $slice_index"
-    end
-
-    # Generate ion-specific labels for plot elements
-    ion_labels = ionstexto(kern, ionz)
-
-    # Create figure with appropriate dimensions
-    fig = Figure(size = (800, 600))
-
-    # Construct comprehensive title string
-    title_str = "Element: $kern, Ion: $ionz | $slice_info $title_suffix"
-
-    # Create axis with ion-specific labeling
-    ax = Axis(fig[1, 1], 
-            title = ion_labels.titleion, 
-            xlabel = "X Grid Index", 
-            ylabel = "Y Grid Index")
-
-    # Generate heatmap with scientific colormap
-    hm = heatmap!(ax, slice_data, colormap = :viridis)
-
-    # Add colorbar with ion fraction labeling
-    Colorbar(fig[1, 2], hm, label = ion_labels.labelion)
-
-    # Maintain proper data aspect ratio for accurate spatial representation
-    ax.aspect = DataAspect()
-
-    # Display the generated figure
-    display(fig)
-
-    return fig
-end
-
-# ==============================================================================
-# Function: print_xionvar_table
-# Purpose:  Generate formatted table output for 3D ion fraction data with file export capability
-# ==============================================================================
-"""
-    print_xionvar_table(xionvar::Array{Float64,5}, eid::Int, ionz::Int; filename::Union{String,Nothing}=nothing)
-
-Generate and display a formatted table of ion fraction values from 3D simulation data.
-
-This function extracts a specific 3D ion fraction cube from the 5D `xionvar` array and
-produces a human-readable table showing ion fraction values at each grid point. The output
-includes grid coordinates and can be displayed in the console or saved to a file.
-
-# Arguments
-- `xionvar::Array{Float64,5}`: 5D array containing ion fraction data [i, j, k, element, ionization]
-- `eid::Int`: Element identifier index in the 4th dimension
-- `ionz::Int`: Ionization state index (0-based, converted to 1-based for array access)
-
-# Keyword Arguments
-- `filename::Union{String,Nothing}=nothing`: Optional filename for saving table output
-
-# Features
-- Formatted column alignment for easy readability
-- Scientific notation for ion fraction values
-- Console display with optional file export
-- Comprehensive grid coordinate information
-
-# Use Cases
-- Debugging ion fraction calculations
-- Data verification and quality control
-- Exporting specific ion state data for external analysis
-- Documentation of simulation results
-
-# Notes
-- Uses 1-based indexing for consistency with Julia conventions
-- Automatically handles ionization state indexing conversion
-- Efficient memory usage through buffered I/O operations
-"""
-function print_xionvar_table(xionvar::Array{Float64,5}, eid::Int, ionz::Int; filename::Union{String,Nothing}=nothing)
-    cube = xionvar[:,:,:, eid, ionz+1]
-
-      # Create table header with column descriptions
-    header = "i   j   k   eid   ionz   value\n" *
-             "----------------------------------------------\n"
-    # Initialize output buffer for efficient string construction
-    buffer = IOBuffer()
-    print(buffer, header)
-
-     # Iterate through all grid points and format table rows
-    for i in axes(cube,1), j in axes(cube,2), k in axes(cube,3)
-        val = cube[i,j,k]
-        # Format row with fixed-width columns and scientific notation
-        @printf(buffer, "%3d %3d %3d  %3d  %3d  %14.8e\n", i, j, k, eid, ionz, val)
-    end
-
-     # Convert buffer content to string
-    output = String(take!(buffer))
-
-    # Display table in console
-    println(output)
-
-    # Save to file if filename provided
-    if filename !== nothing
-        open(filename, "w") do f
-            write(f, output)
-        end
-        println(">> Table saved to: $filename")
-    end
-
-    return nothing
-end
-
-# ==============================================================================
-
-"""
-    plot_element_subplot(
-        temp_props::TemperatureProperties,
-        sml::SimulationData,
-        element::Element,
-        ee_num::Int;
-        ncols::Int = 3,
-        save_dir::AbstractString = "",
-        formats::Vector{String} = ["png"],                  # NEW: output formats
-        fixed_colorrange::Tuple{Float64,Float64} = (-12.0, 2.5),  # NEW: fixed color range for all subplots
-        z_index::Int = 1,                                   # NEW: slice index along Z for xionvar
-        colormap = cgrad(get_palette(15)),                  # NEW: customizable colormap
-        xticks::AbstractVector = 0:200:1000,                # NEW: axis tick configuration
-        yticks::AbstractVector = 0:200:1000                 # NEW: axis tick configuration
-    ) -> Figure
-
-Create a multi-subplot figure visualizing all ionization states (0..ee_num) for a given element.
-Each subplot shows a heatmap (log10 of the data) with a **fixed** color range across subplots and a
-colorbar. The layout is automatically computed with `ncols` columns and enough rows to fit all states.
-
-# Arguments
-- `temp_props::TemperatureProperties`: Structure containing `xionvar` (dimensioned `[Nx, Ny, Nz, Nelements, Nions]`).
-- `sml::SimulationData`: Provides `X_grid` and `Y_grid` for axis coordinates.
-- `element::Element`: Element metadata (`kernmax`, `zelem`, `idk`, etc.).
-- `ee_num::Int`: Highest ionization state to display (inclusive). States shown: `0:ee_num`.
-- `ncols::Int`: Number of columns in the subplot grid.
-- `save_dir::AbstractString`: Base directory to save outputs. If empty, saving is skipped.
-- `formats::Vector{String}`: Output formats to save (e.g., `["png"]`, `["pdf","png"]`, `["svg"]`).
-- `fixed_colorrange::Tuple{Float64,Float64}`: Fixed color range applied to all heatmaps (in log-space).
-- `z_index::Int`: Z-plane index used when slicing `xionvar` (defaults to `1`).
-- `colormap`: Colormap/gradient applied to heatmaps (default uses `get_palette(15)` via `cgrad`).
-- `xticks`, `yticks`: Axis ticks for X and Y.
-
-# Behavior
-1. Validates that `ee_num` is available for the element and that `eid`/`nions` fit `xionvar` dimensions.
-2. Computes a grid layout with `ncols` columns and enough rows to fit `ee_num + 1` subplots.
-3. For each ionization state, extracts the corresponding slice, applies `log10`, and plots a heatmap
-   with the same `fixed_colorrange`.
-4. Handles the rare case where all values are equal by drawing a minimal-variation placeholder within the fixed range.
-5. Adds a per-subplot colorbar and annotations (ion text, axis ticks).
-6. Saves the final figure in the requested formats under `save_dir` (timestamped filename).
-
-# Returns
-- `Figure`: The composed figure with all subplots.
-
-# Dependencies
-Requires in scope: `get_palette`, `cgrad`, `ionstexto`, `Figure`, `Axis`, `GridLayout`, `Colorbar`, `heatmap!`, `text!`,
-and `Dates.now` for timestamping.
-
-# Notes
-- Ensure `z_index` is within `1:size(temp_props.xionvar, 3)`; otherwise, an error is thrown.
-- The fixed color range enforces visual comparability across ionization states.
-- If your grids are not in parsecs, adjust axis labels accordingly.
-"""
-function plot_element_subplot(temp_props::TemperatureProperties, 
-        sml::SimulationData,
-        element::Element, ee_num::Int;
-        ncols::Int = 3,
-        save_dir::AbstractString = "",
-        formats::Vector{String} = ["png"],                       # NEW
-        fixed_colorrange::Tuple{Float64,Float64} = (-12.0, 2.5), # NEW
-        z_index::Int = 1,                                        # NEW
-        colormap = cgrad(get_palette(15)),                       # NEW
-        xticks::AbstractVector = 0:200:1000,                     # NEW
-        yticks::AbstractVector = 0:200:1000                      # NEW
-    )
-
-    # Validate ionization state availability for the element
-    if ee_num > element.kernmax || !element.zelem[ee_num]
-        println("Ionization state index is not available for this element.")
-        return nothing
-    end
-
-    # Resolve element id and number of ion states to display
-    eid   = element.idk[ee_num]
-    nions = ee_num + 1
-
-    # Validate xionvar dimensions (element id and number of ions)
-    if (eid > size(temp_props.xionvar, 4)) || (nions > size(temp_props.xionvar, 5))
-        println("Insufficient dimensions in 'xionvar' to visualize all ion states.")
-        return nothing
-    end
-
-    # Validate z_index bounds for the 3rd dimension of xionvar
-    if !(1 <= z_index <= size(temp_props.xionvar, 3))
-        println("Invalid z_index=$(z_index). Must be within 1..$(size(temp_props.xionvar,3)).")
-        return nothing
-    end
-
-    # Create output directory if specified
-    if save_dir != ""
-        mkpath(save_dir)
-    end
-
-    # Superscript dictionary (optional, not currently used in titles)
-    superscript_dict = Dict(
-        0 => "⁰", 1 => "¹", 2 => "²", 3 => "³", 4 => "⁴", 5 => "⁵", 
-        6 => "⁶", 7 => "⁷", 8 => "⁸", 9 => "⁹", 10 => "¹⁰", 11 => "¹¹", 12 => "¹²"
-    )
-
-    # Compute automatic layout
-    nplots = ee_num + 1
-    nrows  = ceil(Int, nplots / ncols)
-
-    # Create main figure
-    fig_width  = 800 * ncols
-    fig_height = 600 * nrows
-    fig = Figure(size = (fig_width, fig_height))
-
-    # Global title spanning all columns
-    Label(fig[0, :], "Ionization States of Element",
-          fontsize = 24, font = :bold, color = :navy, halign = :center)
-
-    println("Starting automatic subplot creation for $nplots ionization states...")
-    println("Layout: $nrows rows × $ncols columns")
-    println("Fixed color range: $fixed_colorrange")
-
-    # Loop through all ionization states (0..ee_num)
-    for (idx, ionz) in enumerate(0:ee_num)
-        # Compute position in the grid
-        row = ((idx - 1) ÷ ncols) + 1
-        col = ((idx - 1) % ncols) + 1
-
-        superscript_str = get(superscript_dict, ionz, string(ionz))
-        println("Processing state $idx/$nplots: ionization $ionz  → Position [$row, $col]")
-
-        # Obtain labels for this ionization state
-        ion_labels = ionstexto(ee_num, ionz)
-
-        # Extract data for this ionization state at the given Z-plane
-        data = temp_props.xionvar[:, :, z_index, eid, ionz + 1]
-
-        # Apply log10 transform (ensure positivity upstream if needed)
-        data_log = log10.(data)
-
-        # Create an internal grid to control plot + colorbar
-        gl = GridLayout(fig[row, col], alignmode = Outside(30))
-
-        # Main axis for the subplot
-        ax = Axis(gl[1, 1],
-                  title   = ion_labels.titleion * " - " * ion_labels.ion,
-                  xlabel  = "X (pc)",
-                  ylabel  = "Y (pc)",
-                  titlesize = 14)
-
-        # Axis ticks configuration
-        ax.xticks = xticks
-        ax.yticks = yticks
-
-        # Heatmap with the FIXED color range for all subplots
-        data_min = minimum(data_log)
-        data_max = maximum(data_log)
-
-        if isapprox(data_min, data_max)
-            # Special case: all values identical → fabricate tiny variation inside fixed range
-            println("  WARNING: All values are identical; using fixed color range placeholder.")
-            data_fixed = fill(fixed_colorrange[1], size(data_log))
-            if size(data_fixed, 1) > 1 && size(data_fixed, 2) > 1
-                data_fixed[1, 1] = fixed_colorrange[2]  # one pixel different
-            end
-
-            hm = heatmap!(ax, sml.X_grid, sml.Y_grid, data_fixed;
-                          colormap = colormap,
-                          colorrange = fixed_colorrange)
-
-            # Informative overlay text
-            text!(ax,
-                  "Constant data\nlog(value) = $(round(data_min, digits = 3))",
-                  position = (mean(sml.X_grid), mean(sml.Y_grid)),
-                  align    = (:center, :center),
-                  color    = :red,
-                  fontsize = 10)
-        else
-            # Normal case: use the fixed color range
-            hm = heatmap!(ax, sml.X_grid, sml.Y_grid, data_log;
-                          colormap = colormap,
-                          colorrange = fixed_colorrange)
-        end
-
-        # Colorbar on the second column of the internal grid
-        Colorbar(gl[1, 2], hm;
-                 label     = ion_labels.labelion,
-                 width     = 25,
-                 labelsize = 10,
-                 vertical  = true)
-
-        # Add identification of the ion state in the plot area
-        text!(ax, "$(ion_labels.ion)",
-              position = (maximum(sml.X_grid) * 0.85, maximum(sml.Y_grid) * 0.9),
-              align    = (:center, :center),
-              color    = :white,
-              fontsize = 12,
-              font     = :bold)
-
-        # Internal layout proportions (plot ~400px, colorbar ~60px)
-        colsize!(gl, 1, Fixed(400))
-        colsize!(gl, 2, Fixed(60))
-    end
-
-    # Adjust spacing between subplots
-    rowgap!(fig.layout, 10)
-    colgap!(fig.layout, 10)
-
-    # Ensure main columns have uniform width
-    for c in 1:ncols
-        colsize!(fig.layout, c, Auto())
-    end
-
-    # Display the composed figure
-    display(fig)
-
-    # Save the figure in all requested formats
-    if save_dir != ""
-        data_str = Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
-        basefile = joinpath(save_dir, "$(data_str)_$(ee_num)")
-        for ext in formats
-            save("$(basefile).$(ext)", fig)
-        end
-        #println("Figure saved under: $save_dir (formats: $(join(formats, \", \")))")
-        println("Figure saved under: $(save_dir) (formats: $(join(formats, ", ")))")
-    end
-    
-    println("Automatic subplot creation completed!")
-
-    # println("Axis ticks: $(xticks) and $(yticks    println("Axis ticks: $(xticks) and $(yticks)")
-    println("Axis ticks: $(xticks) and $(yticks)")
-
-   return fig
- end 
-
-# =================================================================================================
-
-# plot_element_subplot(tps, simulations_data, elem, 7, ncols=4, save_dir="./plots")

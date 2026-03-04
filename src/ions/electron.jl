@@ -14,8 +14,8 @@
         pgp::PGPData,
         rt::RuntimeData,
         modions::ModionsData;
-        formats::Vector{String} = ["png"],                          # NEW: output formats
-        base_save_path::AbstractString = "./data/output/electrons"  # NEW: base output path
+        formats::Vector{String} = ["png"],                          
+        base_save_path::AbstractString = "./data/output/electrons"  
     ) -> Nothing
 
 Compute the **electron density** from ion fractions and generate maps.
@@ -39,6 +39,10 @@ It then dispatches plot generation via `mapas!`:
 - `formats::Vector{String}`: Output formats for saving plots (e.g., `["png"]`, `["pdf","png"]`).
 - `base_save_path::AbstractString`: Root folder for outputs; subfolders `"ele"` and `"elez"` are created.
 
+# Additional Keywords
+- `id_string::AbstractString`: Snapshot identifier used to create FAIR-compliant output folders and consistent filenames; forwarded to downstream plotters.
+- `root::AbstractString = "output_fair"`: Root directory for FAIR output trees; used by helpers like `prepare_electrons_total_paths`/`prepare_electrons_per_element_paths`.
+
 # Behavior
 1. Derives grid bounds from `cfg.real_dims` and initializes electron density storages to zero.
 2. For each voxel `(ii,jj,kk)`, accumulates electron contributions:
@@ -47,13 +51,17 @@ It then dispatches plot generation via `mapas!`:
    - Accumulate per-element electron density (`eledenz`) normalized by `abund[kern]` and `elescale`.
    - Accumulate total electron density (`eleden`) normalized by `elescale`.
 3. If plotting is enabled, generates a global electron density map and per-element maps.
+   Downstream, FAIR paths are resolved via `prepare_electrons_total_paths(id_string; root)` and
+   `prepare_electrons_per_element_paths(id_string, elem_sym; root)`, and passed to the plotting wrappers
+   (e.g., `maps_electron!`) together with `formats`.
 
 # Returns
 - `Nothing`. Side effects include populating `tps.eleden`, `tps.eledenz`, and saving/displaying plots.
 
 # Dependencies
 Requires in scope:
-- Plotting dispatcher: `mapas!` (preferably extended to accept `formats` and `base_save_path`).
+- Plotting dispatcher: `mapas!` (preferably extended to accept `formats` and `base_save_path`) or wrappers like `maps_electron!`.
+- FAIR helpers: `prepare_electrons_total_paths`, `prepare_electrons_per_element_paths` (used downstream).
 - Types: `TemperatureProperties`, `Element`, `SimulationData`, `ConfigData`, `PGPData`, `RuntimeData`, `ModionsData`.
 
 # Notes
@@ -68,8 +76,9 @@ function electron!(tps::TemperatureProperties,
                    pgp::PGPData,
                    rt::RuntimeData,
                    modions::ModionsData;
-                   formats::Vector{String} = ["png"],                          # NEW
-                   save_path::AbstractString = "./data/output/electrons"  # NEW
+                   formats::Vector{String} = ["png"],                     
+                   id_string::AbstractString,
+                   root::AbstractString="output_fair"
 )
     println("Starting ELECTRON density computation")
 
@@ -121,16 +130,13 @@ function electron!(tps::TemperatureProperties,
                 for kern in 1:kernmax
                     if zelem[kern]  # element is present
                         znes = 0.0  # electron contribution for current element
-
                         # Sum over ionization levels (1..kern); neutral (0) excluded
                         for ionlev in 1:kern
                             zz   = Float64(ionlev)  # ionization level multiplier
                             znes += tps.xionvar[ii, jj, kk, idk[kern], ionlev] * zz
                         end
-
                         # Accumulate contribution to total electron density
                         xnes += znes
-
                         # Store per-element electron density, normalized by abundance and scale
                         tps.eledenz[ii, jj, kk, idk[kern]] = (znes / abund[kern]) * inv_elescale
                     end
@@ -144,18 +150,19 @@ function electron!(tps::TemperatureProperties,
 
     println("Electron density computation completed successfully.")
     
-    if save_path != ""
-       mkpath(save_path)
-    end
-
     # --- Plotting: total electron density (var_name = "ele") ---
     if rt.output_plot.cont || rt.output_plot.color || rt.output_plot.grey
         println("Generating electron density map...")
-        maps!(tps.eleden, sml.X_grid, sml.Y_grid, sml.Z_grid, "ele";
+        
+        paths = prepare_electrons_total_paths(id_string; root=root)
+
+        maps_electron!(tps.eleden, sml.X_grid, sml.Y_grid, sml.Z_grid, "ele";
                kern = 0, ionz = 0, is_ions = false,
                cfg = cfg, pgp = pgp, rt = rt, modions = modions,
                formats = formats,
-               save_path = joinpath(save_path, "ele"))   # NEW: per-type subfolder
+               id_string = id_string,
+               root = root
+            )   
     end
 
     # --- Plotting: per-element electron density (var_name = "elez") ---
@@ -166,12 +173,19 @@ function electron!(tps::TemperatureProperties,
             if rt.output_plot.pdf
                 # add your PDF computation here if necessary
             end
+            # Obtain labels for this ionization state
+            ion_labels = ionstexto(kern, 0)
+            elem_sym = first(split(ion_labels.titleion))
+            
+            paths = prepare_electrons_per_element_paths(id_string, elem_sym; root=root) #
 
-            maps!(tps.eledenz[:, :, :, idk[kern]], sml.X_grid, sml.Y_grid, sml.Z_grid, var_name;
+            maps_electron!(tps.eledenz[:, :, :, idk[kern]], sml.X_grid, sml.Y_grid, sml.Z_grid, var_name;
                    kern = kern, ionz = 0, is_ions = false,
                    cfg = cfg, pgp = pgp, rt = rt, modions = modions,
                    formats = formats,
-                   save_path = joinpath(save_path, "elez"))  # NEW: per-type subfolder
+                   id_string = id_string,
+                   root = root
+                )
         end
     end
 

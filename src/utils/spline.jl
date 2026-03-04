@@ -1,4 +1,20 @@
-
+# ==============================================================================
+# Cubic Spline Interpolation Module
+#
+# This module provides a collection of functions for computing and evaluating
+# natural cubic splines, including:
+#   • Second-derivative computation for spline coefficients
+#   • Spline evaluation routines using different numerical formulations
+#   • Full piecewise cubic coefficient generation (a, b, c, d)
+#   • Alternative solver implementations for tridiagonal systems
+#
+# These utilities support interpolation, smoothing, and numerical analysis of
+# tabulated datasets, and are designed for clarity, robustness, and testing
+# of different spline formulations.
+#
+# Author: Tomás Lima
+# Date: 2026-03-03
+# ==============================================================================
 
 # ==============================================================================
 # Cubic Spline Interpolation Functions
@@ -65,11 +81,16 @@ function spline3_coef(n::Int, t::Vector{Float64}, y::Vector{Float64})
         z[i] = (v[i] - h[i] * z[i+1]) / u[i]
     end
     z[1] = 0.0
-    z[n + 1] = 0.0 # Adicionar esta linha para garantir que o último elemento seja zero
+    z[n + 1] = 0.0 # Guarantee the final element remains zero
 
     return z
 end
 
+# ==============================================================================
+# 
+# 
+#
+# ==============================================================================
 """
 spline3_eval(n::Int, t::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, x::Float64) -> Float64
 
@@ -128,8 +149,11 @@ function spline3_eval(n::Int, t::Vector{Float64}, y::Vector{Float64}, z::Vector{
     return spline3_eval
 end
 
-
-
+# ==============================================================================
+# 
+# 
+#
+# ==============================================================================
 """
 natural_cubic_spline(t::Vector{Float64}, y::Vector{Float64}) -> Tuple
 
@@ -174,10 +198,10 @@ Natural boundary conditions: second derivatives zero at endpoints
 function natural_cubic_spline(t::Vector{Float64}, y::Vector{Float64})
     n = length(t)
     if n != length(y)
-        error("Os vetores t e y devem ter o mesmo comprimento.")
+        error("Vectors t and y must have the same length.")
     end
     if n < 3
-        error("São necessários pelo menos 3 pontos para a spline cúbica.")
+        error("At least 3 points are required for the cubic spline.")
     end
 
     h = diff(t)
@@ -206,8 +230,13 @@ function natural_cubic_spline(t::Vector{Float64}, y::Vector{Float64})
     return a[1:n-1], b[1:n-1], c[1:n-1], d[1:n-1], t[1:n-1], z
 end
 
+# ==============================================================================
+# 
+# 
+#
+# ==============================================================================
 """
-spline3_coef_vf(n::Int, x::Vector{Float64}, y::Vector{Float64}) -> Matrix{Float64}
+spline3_coef_v1(n::Int, x::Vector{Float64}, y::Vector{Float64}) -> Matrix{Float64}
 
 Alternative implementation of cubic spline coefficient calculation.
 
@@ -238,10 +267,7 @@ Compatible with the same interpolation formula
 May have different numerical properties for certain datasets
 """
 
-# Função auxiliar para spline (precisa ser implementada)
-function spline3_coef_vf(n::Int, x::Vector{Float64}, y::Vector{Float64})
-    # Implementação do algoritmo spline cúbico
-    # Esta é uma implementação básica - ajuste conforme necessário
+function spline3_coef_v1(n::Int, x::Vector{Float64}, y::Vector{Float64})
     h = diff(x)
     α = zeros(Float64, n)
     for i in 2:n
@@ -278,13 +304,11 @@ function spline3_coef_vf(n::Int, x::Vector{Float64}, y::Vector{Float64})
     return [y[1:n] b[1:n] c[1:n] d[1:n]]
 end
 
-
-
-
-
-
-
-
+# ==============================================================================
+# 
+# 
+#
+# ==============================================================================
 
 function evaluate_spline(x::Float64, a::Vector{Float64}, b::Vector{Float64}, c::Vector{Float64}, d::Vector{Float64}, t_segments::Vector{Float64})
     n = length(a)
@@ -316,50 +340,13 @@ function evaluate_spline(x::Float64, a::Vector{Float64}, b::Vector{Float64}, c::
     return a[i] + b[i] * dx + c[i] * dx^2 + d[i] * dx^3
 end
 
-
+# ==============================================================================
+# 
+# 
+#
+# ==============================================================================
 """
-    parse_float_scientific(str::AbstractString) -> Float64
-
-Parses a string representing a floating-point number in scientific notation 
-into a `Float64`.
-
-This function supports both `E` and `D` notation (Fortran-style).
-If parsing fails, it returns `NaN`.
-
-# Arguments
-- `str::AbstractString`: A string containing a number in scientific notation.
-
-# Returns
-- `Float64` value if parsing succeeds.
-- `NaN` if parsing fails.
-
-# Examples
-```julia
-julia> parse_float_scientific_strict("1.23E-04")
-0.000123
-
-julia> parse_float_scientific_strict("2.5D+03")
-2500.0
-
-julia> parse_float_scientific_strict("invalid")
-NaN
-
-"""
-function parse_float_scientific(str::AbstractString)::Float64
-    try
-        clean_str = replace(str, r"[dD]" => "E") # Fortran D → E
-        return parse(Float64, clean_str)
-    catch
-        return NaN
-    end
-end
-
-
-
-#-----
-
-"""
-    spline3_coef(n::Int, t::Vector{Float64}, y::Vector{Float64}) -> Vector{Float64}
+    spline3_coef_v2(n::Int, t::Vector{Float64}, y::Vector{Float64}) -> Vector{Float64}
 
 Compute the second derivatives (z coefficients) for a natural cubic spline
 interpolation of the function defined by the nodes `t` and values `y`.
@@ -380,8 +367,13 @@ z = spline3_coef(length(t), t, y)
 
 
 """
+# ==============================================================================
+# 
+# 
+#
+# ==============================================================================
 
-function spline3_coef_new(n::Int, t::Vector{Float64}, y::Vector{Float64})
+function spline3_coef_v2(n::Int, t::Vector{Float64}, y::Vector{Float64})
         if n < 3
             error("Need at least 3 points for cubic spline.")
         end
@@ -409,13 +401,14 @@ function spline3_coef_new(n::Int, t::Vector{Float64}, y::Vector{Float64})
         
         return z
 end
-
-
-# Definição das duas funções spline3_eval -------------------------
-# v1 e v2 funcionam muito bem. v3 99%
-# Versão 1 (original transposta)
+# ==============================================================================
+# 
+# 
+#
+# ==============================================================================
+# (original transposta)
 function spline3_eval_v1(n::Int, t::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, x::Float64)
-    # procura o intervalo onde x pertence
+   # Find the interval containing x
     i = 1
     for j in n-1:-1:1
         if x - t[j] >= 0.0
@@ -429,8 +422,12 @@ function spline3_eval_v1(n::Int, t::Vector{Float64}, y::Vector{Float64}, z::Vect
     temp = (y[i+1] - y[i]) / h - h * (z[i+1] + 2.0 * z[i]) / 6.0 + (x - t[i]) * temp
     return y[i] + (x - t[i]) * temp
 end
-
-# Versão 2 (a tua reimplementação)
+# ==============================================================================
+# 
+# 
+#
+# ==============================================================================
+# 
 function spline3_eval_v2(n::Int, t::Vector{Float64}, y::Vector{Float64}, z::Vector{Float64}, x::Float64)
     h = 0.0
     temp = 0.0
@@ -452,8 +449,11 @@ function spline3_eval_v2(n::Int, t::Vector{Float64}, y::Vector{Float64}, z::Vect
 
     return spline3_eval_v2
 end
-
-
+# ==============================================================================
+# 
+# 
+#
+# ==============================================================================
 """
     spline3_eval(ntemp_spline, alogt, y, y2, x) -> Float64
 
@@ -470,7 +470,7 @@ Arguments
 Returns
 - interpolated value (Float64).
 """
-function spline3_eval_v3(ntemp_spline::Int, alogt::AbstractVector{Float64},
+function spline3_eval(ntemp_spline::Int, alogt::AbstractVector{Float64},
                       y::AbstractVector{Float64}, y2::AbstractVector{Float64},
                       x::Float64)::Float64
     nt = length(alogt)
@@ -506,305 +506,4 @@ function spline3_eval_v3(ntemp_spline::Int, alogt::AbstractVector{Float64},
 
     # Cubic spline interpolation formula (from natural cubic spline with y2 second derivatives)
     return a * y[k] + b * y[k+1] + ((a^3 - a) * y2[k] + (b^3 - b) * y2[k+1]) * (h^2) / 6.0
-end
-
-
-
-"""
-    parse_float_scientific_strict(str::AbstractString) -> Float64
-
-Parses a string representing a floating-point number in scientific notation 
-into a `Float64`.
-
-This function supports both `E` and `D` notation (Fortran-style).
-If parsing fails, it returns `NaN`.
-
-# Arguments
-- `str::AbstractString`: A string containing a number in scientific notation.
-
-# Returns
-- `Float64` value if parsing succeeds.
-- `NaN` if parsing fails.
-
-# Examples
-```julia
-julia> parse_float_scientific_strict("1.23E-04")
-0.000123
-
-julia> parse_float_scientific_strict("2.5D+03")
-2500.0
-
-julia> parse_float_scientific_strict("invalid")
-NaN
-
-"""
-function parse_float_scientific_strict(str::AbstractString)::Float64
-    try
-        clean_str = replace(str, r"[dD]" => "E") # Fortran D → E
-        return parse(Float64, clean_str)
-    catch
-        return NaN
-    end
-end
-
-
-#---
-
-
-"""
-Displays the first n values of a 1D array with indices and values in scientific notation.
-
-Arguments:
-- vetor: 1D array of Float64
-- n: Number of elements to display
-"""
-function print_vect(vetor::Vector{Float64}, n::Int)
-  
-    total = length(vetor)
-    println("=== First $n values of 1D array (length $total) ===")
-    println(" i      Value")
-    println("---  ---------------")
-
-    for i in 1:min(n, total)
-        value_str = @sprintf("%.6E", vetor[i])
-        println(@sprintf("%3d  %15s", i, value_str))
-    end
-
-    if n > total
-        println("\n⚠️  Warning: n ($n) is greater than the total size of the array ($total)")
-    end
-end
-
-#---
- """
-    Displays the first n values of a 2D array with indices and values in scientific notation.
-
-    Arguments:
-    - vetor: 2D array of Float64
-    - n: Number of elements to display
-    """
-function print_vect(vetor::Array{Float64,2}, n::Int)
-   
-    dims = size(vetor)
-    count = 0
-
-    println("=== First $n values of 2D array (dimensions $dims) ===")
-    println(" i    j      Value")
-    println("---  ---  ---------------")
-
-    for j in 1:dims[2]
-        for i in 1:dims[1]
-            if count < n
-                value_str = @sprintf("%.6E", vetor[i, j])
-                println(@sprintf("%3d  %3d  %15s", i, j, value_str))
-                count += 1
-            else
-                break
-            end
-        end
-        count >= n && break
-    end
-
-    if n > prod(dims)
-        println("\n⚠️  Warning: n ($n) is greater than the total size of the array ($(prod(dims)))")
-    end
-end
-
-
-#---
-
- """
-    Displays the first n values of a 3D array with indices and values in scientific notation.
-
-    Arguments:
-    - vetor: 3D array of Float64
-    - n: Number of elements to display
-    """
-
-function print_vect(vetor::Array{Float64,3}, n::Int)
-   
-    dims = size(vetor)
-    count = 0
-
-    println("=== First $n values of 3D array (dimensions $dims) ===")
-    println(" i    j    k      Value")
-    println("---  ---  ---  ---------------")
-
-    for k in 1:dims[3]
-        for j in 1:dims[2]
-            for i in 1:dims[1]
-                if count < n
-                    value_str = @sprintf("%.6E", vetor[i, j, k])
-                    println(@sprintf("%3d  %3d  %3d  %15s", i, j, k, value_str))
-                    count += 1
-                else
-                    break
-                end
-            end
-            count >= n && break
-        end
-        count >= n && break
-    end
-
-    if n > prod(dims)
-        println("\n⚠️  Warning: n ($n) is greater than the total size of the array ($(prod(dims)))")
-    end
-end
-
-#-----------
-
-"""
-Displays values of a 1D array within the specified range with indices and values in scientific notation.
-
-Arguments:
-- vetor: 1D array of Float64
-- xmin: Minimum index in x direction (inclusive)
-- xmax: Maximum index in x direction (inclusive)
-"""
-function print_vect(vetor::Vector{Float64}, xmin::Int, xmax::Int)
-    total = length(vetor)
-    
-    # Validate ranges
-    xmin = max(1, xmin)
-    xmax = min(total, xmax)
-    
-    if xmin > xmax
-        println("⚠️  Error: xmin ($xmin) is greater than xmax ($xmax)")
-        return
-    end
-    
-    n = xmax - xmin + 1
-    
-    println("=== Values of 1D array (indices $xmin:$xmax of $total) ===")
-    println(" i      Value")
-    println("---  ---------------")
-
-    for i in xmin:xmax
-        value_str = @sprintf("%.6E", vetor[i])
-        println(@sprintf("%3d  %15s", i, value_str))
-    end
-end
-
-"""
-Displays values of a 2D array within the specified ranges with indices and values in scientific notation.
-
-Arguments:
-- vetor: 2D array of Float64
-- xmin: Minimum index in x direction (inclusive)
-- xmax: Maximum index in x direction (inclusive)
-- ymin: Minimum index in y direction (inclusive)
-- ymax: Maximum index in y direction (inclusive)
-"""
-function print_vect(vetor::Array{Float64,2}, xmin::Int, xmax::Int, ymin::Int, ymax::Int)
-    dims = size(vetor)
-    
-    # Validate ranges
-    xmin = max(1, xmin)
-    xmax = min(dims[1], xmax)
-    ymin = max(1, ymin)
-    ymax = min(dims[2], ymax)
-    
-    if xmin > xmax || ymin > ymax
-        println("⚠️  Error: Invalid range - x: [$xmin, $xmax], y: [$ymin, $ymax]")
-        return
-    end
-    
-    total_in_range = (xmax - xmin + 1) * (ymax - ymin + 1)
-    
-    println("=== Values of 2D array (dimensions $dims, range x[$xmin:$xmax], y[$ymin:$ymax]) ===")
-    println(" i    j      Value")
-    println("---  ---  ---------------")
-
-    count = 0
-    for j in ymin:ymax
-        for i in xmin:xmax
-            value_str = @sprintf("%.6E", vetor[i, j])
-            println(@sprintf("%3d  %3d  %15s", i, j, value_str))
-            count += 1
-        end
-    end
-    
-    println("\nTotal elements displayed: $count")
-end
-
-"""
-Displays values of a 3D array within the specified ranges with indices and values in scientific notation.
-
-Arguments:
-- vetor: 3D array of Float64
-- xmin: Minimum index in x direction (inclusive)
-- xmax: Maximum index in x direction (inclusive)
-- ymin: Minimum index in y direction (inclusive)
-- ymax: Maximum index in y direction (inclusive)
-- zmin: Minimum index in z direction (inclusive)
-- zmax: Maximum index in z direction (inclusive)
-"""
-function print_vect(vetor::Array{Float64,3}, xmin::Int, xmax::Int, ymin::Int, ymax::Int, zmin::Int, zmax::Int)
-    dims = size(vetor)
-    
-    # Validate ranges
-    xmin = max(1, xmin)
-    xmax = min(dims[1], xmax)
-    ymin = max(1, ymin)
-    ymax = min(dims[2], ymax)
-    zmin = max(1, zmin)
-    zmax = min(dims[3], zmax)
-    
-    if xmin > xmax || ymin > ymax || zmin > zmax
-        println("⚠️  Error: Invalid range - x: [$xmin, $xmax], y: [$ymin, $ymax], z: [$zmin, $zmax]")
-        return
-    end
-    
-    total_in_range = (xmax - xmin + 1) * (ymax - ymin + 1) * (zmax - zmin + 1)
-    
-    println("=== Values of 3D array (dimensions $dims, range x[$xmin:$xmax], y[$ymin:$ymax], z[$zmin:$zmax]) ===")
-    println(" i    j    k      Value")
-    println("---  ---  ---  ---------------")
-
-    count = 0
-    for k in zmin:zmax
-        for j in ymin:ymax
-            for i in xmin:xmax
-                value_str = @sprintf("%.6E", vetor[i, j, k])
-                println(@sprintf("%3d  %3d  %3d  %15s", i, j, k, value_str))
-                count += 1
-            end
-        end
-    end
-    
-    println("\nTotal elements displayed: $count")
-end
-
-#------------
-
-
-"""
-    print_struct_info(struct_data)
-
-Prints the names, types, and dimensions of all fields in a given struct.
-
-- If the field is an array, its dimensions are shown.
-- For other fields, only the type is shown.
-- If retrieving size or other info fails, the error is caught and reported.
-
-# Example
-```julia
-print_struct_info(simulations_data)
-"""
-function print_struct_info(struct_data)
-    println("Information about the fields in the struct:")
-    for field_name in fieldnames(typeof(struct_data))
-    field_value = getfield(struct_data, field_name)
-        try
-        dims = size(field_value) # might fail for non-arrays
-        println("Name: ", field_name,
-        " | Type: ", typeof(field_value),
-        " | Dimensions: ", dims)
-        catch
-        # fallback if size() is not applicable
-        println("Name: ", field_name,
-        " | Type: ", typeof(field_value),
-        " | Dimensions: not applicable")
-        end
-    end
 end
