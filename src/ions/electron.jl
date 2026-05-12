@@ -15,7 +15,8 @@
         rt::RuntimeData,
         modions::ModionsData;
         formats::Vector{String} = ["png"],                          
-        base_save_path::AbstractString = "./data/output/electrons"  
+        base_save_path::AbstractString = "./data/output/electrons",
+        kern_only::Union{Nothing, Int} = nothing   # restrict computation to a single element (faster demo)
     ) -> Nothing
 
 Compute the **electron density** from ion fractions and generate maps.
@@ -42,6 +43,12 @@ It then dispatches plot generation via `mapas!`:
 # Additional Keywords
 - `id_string::AbstractString`: Snapshot identifier used to create FAIR-compliant output folders and consistent filenames; forwarded to downstream plotters.
 - `root::AbstractString = "output_fair"`: Root directory for FAIR output trees; used by helpers like `prepare_electrons_total_paths`/`prepare_electrons_per_element_paths`.
+
+- `kern_only::Union{Nothing, Int} = nothing`:
+  If `nothing`, all elements are used in the electron density computation.
+  If an integer is provided, restricts the calculation to a single element
+  (identified by its `kern` index), which can significantly speed up execution
+  for testing or demonstration purposes.
 
 # Behavior
 1. Derives grid bounds from `cfg.real_dims` and initializes electron density storages to zero.
@@ -78,7 +85,8 @@ function electron!(tps::TemperatureProperties,
                    modions::ModionsData;
                    formats::Vector{String} = ["png"],                     
                    id_string::AbstractString,
-                   root::AbstractString="output_fair"
+                   root::AbstractString="output_fair",
+                   kern_only::Union{Nothing, Int} = nothing
 )
     println("Starting ELECTRON density computation")
 
@@ -126,8 +134,9 @@ function electron!(tps::TemperatureProperties,
                 # Initialize a small positive baseline to avoid zeros (consistent with original 1e-30)
                 xnes = 1.0e-30
 
-                # Iterate over elements
-                for kern in 1:kernmax
+                # --- Loop over all elements or restrict to a single element if kern_only is set 
+                #  for kern in 1:kernmax
+                 for kern in (isnothing(kern_only) ? (1:kernmax) : (kern_only:kern_only))
                     if zelem[kern]  # element is present
                         znes = 0.0  # electron contribution for current element
                         # Sum over ionization levels (1..kern); neutral (0) excluded
@@ -167,7 +176,10 @@ function electron!(tps::TemperatureProperties,
 
     # --- Plotting: per-element electron density (var_name = "elez") ---
     var_name = "elez"
-    for kern in 1:kernmax
+    # for kern in 1:kernmax
+    # --- Loop over all elements or restrict to a single element if kern_only is set 
+    for kern in (isnothing(kern_only) ? (1:kernmax) : (kern_only:kern_only))
+
         if zelem[kern]
             # Optional PDF output gate
             if rt.output_plot.pdf

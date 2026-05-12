@@ -445,7 +445,10 @@ function readdata_hdf5!(datafile::AbstractString,
             simulations_data.bzz = read(h5file["Data-Set-9"])
         end
 
+    if config_data.debug.ldebug 
         println("Datasets read successfully - HDF5.")
+    end
+        
     catch e
         close(h5file)
         return ERROR_HDF5_READ_FAIL
@@ -549,7 +552,9 @@ function readdata_hdf5(datafile::AbstractString,
             simulations_data.bzz = read(h5file["Data-Set-9"])
         end
 
+    if config_data.debug.ldebug 
         println("Datasets read successfully - HDF5.")
+    end
     catch e
         # println("Error reading datasets: ", e)
         # If reading the datasets fails, close and return the structure as-is
@@ -1116,7 +1121,7 @@ function readlist!(filename::String,config_data::ConfigData, runtime_data::Runti
                 # Parse physical time (second column) and normalize by timescale
                 time_files[l] = parse(Float64, parts[2]) / timescale
                 # Output verification: display processed file number and normalized time
-                println(files_files[l], " ", time_files[l]) # Simula a escrita para o arquivo 2
+                println(files_files[l], " ", time_files[l]) # Simula a escrita para o ficheiro 2
             else
                 @warn "Invalid line in $filename: $line"
             end

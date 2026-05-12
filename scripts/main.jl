@@ -15,8 +15,10 @@ if isa(result, Int)
     # exit(1)  
 else
     config_data, pgp_data, runtime_data, modions_data = result
-    println(AstroTLPlot.ERROR_MESSAGES_DICT[AstroTLPlot.STATUS_SUCCESS])
-    println("Directory: ", config_data.directories.directory) 
+       if config_data.debug.ldebug 
+            println(AstroTLPlot.ERROR_MESSAGES_DICT[AstroTLPlot.STATUS_SUCCESS])
+            println("Directory: ", config_data.directories.directory) 
+        end
 end
 
 # Configure & Allocate
@@ -42,8 +44,10 @@ if isa(read_result, Int)
             AstroTLPlot.ERROR_MESSAGES_DICT[error_code_to_display])
     # exit(1)  
 else
-    println(AstroTLPlot.ERROR_MESSAGES_DICT[AstroTLPlot.STATUS_SUCCESS])
-    println("All simulation data is ready for processing.")
+      if config_data.debug.ldebug 
+        println(AstroTLPlot.ERROR_MESSAGES_DICT[AstroTLPlot.STATUS_SUCCESS])
+        println("All simulation data is ready for processing.")
+      end
 end
 
 # Process Variables & Ions
@@ -52,7 +56,9 @@ elem = count_ions(config_data)
 abundances!(config_data, elem)
 tps = ions_read(config_data, pgp_data, runtime_data, modions_data, elem)
 ionp = create_ionproperties()
-println("All simulation data is ready for plotting.")
+ #if config_data.debug.ldebug 
+   println("All simulation data is ready for plotting.")
+ #end
 
 #=function run_simulation(; file_name="./data/config/indatpgp.yaml")
     # Load Configuration 

@@ -1476,7 +1476,8 @@ end
         modions::ModionsData;
         method::Symbol = :auto,
         formats::Vector{String} = ["png"],                     
-        base_save_path::AbstractString = "./data/output/ions" 
+        base_save_path::AbstractString = "./data/output/ions",
+        kern_only = nothing
     ) -> Nothing
 
 Compute ion fractions for all configured elements and ionization states, populate
@@ -1506,6 +1507,12 @@ via `mapas_ions!`.
 - `id_string::AbstractString`: Snapshot identifier forwarded to downstream routines to create FAIR-compliant
   folder structures (e.g., `<root>/snapshots/<id>/species/ions/...`) and to derive a numeric `filenum` for filenames.
 - `root::AbstractString = "output_fair"`: Root directory used by FAIR path helpers (e.g., `prepare_ion_paths`).
+
+- `kern_only::Union{Nothing, Int} = nothing`:
+  If `nothing`, all elements are processed.
+  If an integer is provided, only the corresponding element (`kern` index)
+  is processed (e.g., `2` for Helium, `8` for Oxygen).
+
 
 # Behavior
 1. Reads element properties and configuration flags.
@@ -1538,6 +1545,7 @@ Requires in scope:
 - `temprops.xionvar` is assumed preallocated with shape `(in_dim, jn_dim, kn_dim, nelements, nions_per_element)`.
 - `mapas_ions!` is called with `fracion` and `var_name = "den"` in this pipeline; adjust if you prefer a different variable tag.
 - The element-level subplot export uses FAIR-style directories based on `id_string`, element symbol, and `root`.
+- Setting `kern_only` can significantly speed up execution for demonstrations.
 """
 
 function ions!(ionp::IonProperties, temprops::TemperatureProperties,
@@ -1548,7 +1556,8 @@ function ions!(ionp::IonProperties, temprops::TemperatureProperties,
                method::Symbol = :auto,
                formats::Vector{String} = ["pdf"],
                id_string::AbstractString,                 
-               root::AbstractString = "output_fair"      
+               root::AbstractString = "output_fair",
+               kern_only::Union{Nothing, Int} = nothing 
 )
     # --- Element properties and atomic data ---
     kernmax = elem.kernmax         # Maximum element index to process
@@ -1572,13 +1581,16 @@ function ions!(ionp::IonProperties, temprops::TemperatureProperties,
     # --- Initialize output storage ---
     temprops.xionvar .= 0.0
 
+  if cfg.debug.ldebug   
     println("Starting IONS processing")
-
+  end
     # --- Decide interpolation method ---
     chosen_method = method == :auto ? (lspline ? :spline : :legacy) : method
 
     # --- Iterate through all elements and ionization states ---
-    for kern in 1:kernmax
+    # for kern in 1:kernmax
+    # --- Loop over all elements or restrict to a single element if kern_only is set 
+   for kern in (isnothing(kern_only) ? (1:kernmax) : (kern_only:kern_only))
         # Process only valid elements
         if zelem[kern]
             eid = idk[kern]
@@ -1629,6 +1641,7 @@ function ions!(ionp::IonProperties, temprops::TemperatureProperties,
            end
         end
     end
+    
 
     println("Ion maps completed, proceeding to electron calculations")
 

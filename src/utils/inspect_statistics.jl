@@ -412,10 +412,10 @@ function write_txt_statistics(path::String, result)::Int
             println(io)
         end
         
-        @info AstroTLPlot.error_message(STATUS_SAVE_SUCCESS) code=STATUS_SAVE_SUCCESS path=path kind="txt"
+       # @info AstroTLPlot.error_message(STATUS_SAVE_SUCCESS) code=STATUS_SAVE_SUCCESS path=path kind="txt"
         return AstroTLPlot.STATUS_SAVE_SUCCESS
     catch e
-        @error error_message(ERROR_TXT_WRITE_FAIL) error=e code=ERROR_TXT_WRITE_FAIL path=path kind="txt"
+      #  @error error_message(ERROR_TXT_WRITE_FAIL) error=e code=ERROR_TXT_WRITE_FAIL path=path kind="txt"
         return ERROR_TXT_WRITE_FAIL
     end
 end
@@ -597,7 +597,7 @@ end
     if disp
         try
             print_statistics(result)
-            @info error_message(STATUS_SUCCESS) code=STATUS_SUCCESS context="display_after_save_or_list"
+           # @info error_message(STATUS_SUCCESS) code=STATUS_SUCCESS context="display_after_save_or_list"
         catch e
             @error error_message(STATUS_DISPLAY_FAIL) error=e code=STATUS_DISPLAY_FAIL context="display_after_save_or_list"
             if status_code == STATUS_SUCCESS
